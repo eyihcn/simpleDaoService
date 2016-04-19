@@ -1,0 +1,146 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!-- was: <?xml version="1.0" encoding="UTF-8"?> -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+        
+     <bean id="wishApiConfig" class="com.tomtop.application.orm.WishApiConfig"/>
+	<bean id="myWishList" class="com.tomtop.application.orm.MyWishList"/>
+	<bean id="stockSaleStatusInfo" class="com.tomtop.application.orm.StockSaleStatusInfo"/>
+	<bean id="wishBackCarryProduct" class="com.tomtop.application.orm.WishBackCarryProduct"/>
+	<bean id="wishBackPublishFailLog" class="com.tomtop.application.orm.WishBackPublishFailLog"/>
+	<bean id="wishBackPublishProductVariationFailLog" class="com.tomtop.application.orm.WishBackPublishProductVariationFailLog"/>
+	<bean id="wishCatalogTags" class="com.tomtop.application.orm.WishCatalogTags"/>
+	<bean id="wishCounterfeitReason" class="com.tomtop.application.orm.WishCounterfeitReason"/>
+	<bean id="wishlistingOffline" class="com.tomtop.application.orm.WishlistingOffline"/>
+	<bean id="wishListingStayOffShelf" class="com.tomtop.application.orm.WishListingStayOffShelf"/>
+	<bean id="wishListOverSold" class="com.tomtop.application.orm.WishListOverSold"/>
+	<bean id="wishListOverSoldFailLog" class="com.tomtop.application.orm.WishListOverSoldFailLog"/>
+	<bean id="wishProductDataAnalysis" class="com.tomtop.application.orm.WishProductDataAnalysis"/>
+	<bean id="wishSkuAlias" class="com.tomtop.application.orm.WishSkuAlias"/>
+	<bean id="wishSkuPublishHistory" class="com.tomtop.application.orm.WishSkuPublishHistory"/>
+	<bean id="wishTemplate" class="com.tomtop.application.orm.WishTemplate"/>
+	<bean id="wishTemplateGroup" class="com.tomtop.application.orm.WishTemplateGroup"/>
+	<bean id="wishToBePublished" class="com.tomtop.application.orm.WishToBePublished"/>
+	<bean id="WishCounterfeitProduct" class="com.tomtop.application.orm.WishCounterfeitProduct"/>
+	<bean id="wishAccount" class="com.tomtop.application.orm.WishAccount"/>
+	<bean id="wishAccountUserMap" class="com.tomtop.application.orm.WishAccountUserMap"/>
+	<bean id="wishShippingMap" class="com.tomtop.application.orm.WishShippingMap"/>
+	
+	<bean id="wishApiConfigMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishApiConfig</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="myWishListMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.MyWishList</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="stockSaleStatusInfoMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.StockSaleStatusInfo</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishBackCarryProductMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishBackCarryProduct</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishBackPublishFailLogMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishBackPublishFailLog</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishBackPublishProductVariationFailLogMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishBackPublishProductVariationFailLog</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishCatalogTagsMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishCatalogTags</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishCounterfeitReasonMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishCounterfeitReason</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishlistingOfflineMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishlistingOffline</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishListingStayOffShelfMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishListingStayOffShelf</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishListOverSoldMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishListOverSold</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishListOverSoldFailLogMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishListOverSoldFailLog</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishProductDataAnalysisMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishProductDataAnalysis</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishSkuAliasMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishSkuAlias</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishSkuPublishHistoryMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishSkuPublishHistory</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishTemplateMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishTemplate</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishTemplateGroupMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishTemplateGroup</value>
+        </constructor-arg>
+    </bean> 
+	<bean id="wishToBePublishedMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishToBePublished</value>
+        </constructor-arg>
+    </bean> 
+    <bean id="wishCounterfeitProductMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishCounterfeitProduct</value>
+        </constructor-arg>
+    </bean>
+    <bean id="wishAccountMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishAccount</value>
+        </constructor-arg>
+    </bean>
+    <bean id="wishAccountUserMapMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishAccountUserMap</value>
+        </constructor-arg>
+    </bean>
+    
+     <bean id="wishShippingMapMainDao" class="com.tomtop.system.core.dao.MongoDao">
+        <constructor-arg name="entityClass" type="java.lang.Class">
+            <value>com.tomtop.application.orm.WishShippingMap</value>
+        </constructor-arg>
+    </bean> 
+</beans>
