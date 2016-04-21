@@ -11,7 +11,7 @@ import dao.MongoDao;
 public abstract class CRUDService<T> extends BaseService<T> {
 
 	@Autowired
-	private MongoDao commonDao;
+	private MongoDao<T> commonDao;
 
 	@Override
 	public boolean daoSave(Map<String, Object> request) {
