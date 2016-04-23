@@ -53,7 +53,10 @@ public class TestCRUDService {
 
 	@Test
 	public void testQuery() {
-		Query query = new Query();
+//		Query query = new Query();
+		
+		System.out.println(this.getClass().getSimpleName());
+//		mongoDao.
 	}
 
 	/**
@@ -151,7 +154,9 @@ public class TestCRUDService {
 	@Test
 	public void testInsert() {
 		
-		Product p = new Product(); p.setId(3l); p.setName("pro-ccc"); 
+		Product p = new Product();
+		p.setId(3l);
+		p.setName("pro-ccc");
 		//若insert时， 
 		// 某些字段不设值，若字段是引用类型null，则文档中不会产生该字段 
 		// 某些字段是基本类型，会保存默认值如int保存0, 
@@ -160,8 +165,9 @@ public class TestCRUDService {
 		// 当object不存在是执行insert，也就是id是否已经存在了。
 
 		this.mongoDao.insert(p);
-		// 
-		Product 	p1 = new Product(); p1.setId(6l); p1.setName("pro-bb");
+		Product p1 = new Product();
+		p1.setId(6l);
+		p1.setName("pro-bb");
 		p1.setPrice(2); List<Product> list = new ArrayList<Product>();
 		list.add(p1);
 		list.add(p);
