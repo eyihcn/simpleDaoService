@@ -1,17 +1,27 @@
 package service;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
-import dao.MongoDao;
+import dao.BaseMongoDaoImpl;
 
-@SuppressWarnings("unchecked")
-public abstract class CRUDService<T> extends BaseService<T> {
+/**
+ * 基础的mongodao实现CRUD; 这层算是Action和dao层的解耦
+ * 
+ * @author chenyi
+ *
+ * @param <T>
+ *            实体类型
+ * @param <PK>
+ *            实体主键类型
+ */
+public abstract class CRUDService<T, PK extends Serializable> extends BaseService<T, PK> {
 
 	@Autowired
-	private MongoDao<T> commonDao;
+	private BaseMongoDaoImpl<T, PK> commonDao;
 
 	@Override
 	public boolean daoSave(Map<String, Object> request) {
@@ -39,7 +49,7 @@ public abstract class CRUDService<T> extends BaseService<T> {
 	}
 
 	@Override
-	public boolean daoDeleteById(Integer id) {
+	public boolean daoDeleteById(PK id) {
 		return commonDao.deleteById(id);
 	}
 

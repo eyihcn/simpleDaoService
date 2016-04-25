@@ -27,6 +27,9 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.WriteResult;
 
+import eyihcn.utils.CommonDaoHelper;
+import eyihcn.utils.GenericsUtils;
+
 /**
  * @author chenyi
  *
@@ -38,7 +41,6 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> implements Ba
 
 	@Autowired(required = false)
 	private MongoTemplate mongoTemplate;
-	private PK id; // 主键
 	private Class<T> entityClass; // 实体的运行是类
 	private String collectionName;// MongoTemplate 创建的数据表的名称是类名的首字母小写
 	private String orderAscField;
@@ -109,7 +111,7 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> implements Ba
 		return mongoTemplate.findAll(entityClass, collectionName);
 	}
 
-	public T findById(Object id) {
+	public T findById(PK id) {
 		return mongoTemplate.findById(id, entityClass, collectionName);
 	}
 
@@ -145,7 +147,7 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> implements Ba
 		return mongoTemplate.findOne(query, entityClass, collectionName);
 	}
 
-	public Boolean remove(Object object) {
+	public Boolean remove(T object) {
 		try {
 			mongoTemplate.remove(object);
 		} catch (Exception e) {
@@ -392,11 +394,11 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> implements Ba
 		return Long.valueOf(count(criteria));
 	}
 
-	public Object load(Object id) {
+	public T load(PK id) {
 		return findById(id);
 	}
 
-	public Object fetchRow(Map<String, Object> requestArgs) {
+	public T fetchRow(Map<String, Object> requestArgs) {
 		Criteria criteria = getRequestRestriction((HashMap<String, Object>) requestArgs.get("query"));
 
 		return findOne(criteria);
@@ -467,7 +469,7 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> implements Ba
 
 	public Boolean save(Map<String, Object> requestArgs) {
 		try {
-			Object object = getEntityClass().newInstance();
+			T object = getEntityClass().newInstance();
 			if (null == requestArgs.get("id")) {
 				requestArgs.put("id", getNextId());
 			}
@@ -482,12 +484,12 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> implements Ba
 		return Boolean.valueOf(true);
 	}
 
-	public void delete(Object object) {
+	public void delete(T object) {
 		remove(object);
 	}
 
-	public Boolean deleteById(Object id) {
-		Object object = load(id);
+	public Boolean deleteById(PK id) {
+		T object = load(id);
 		if (null == object) {
 			return Boolean.valueOf(false);
 		}
