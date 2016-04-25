@@ -11,9 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import entity.BaseEntity;
 import eyihcn.utils.Json;
 
-public abstract class BaseService<T, PK extends Serializable> {
+public abstract class BaseService<T extends BaseEntity, PK extends Serializable> {
 
 	private static final String SAVE = "save";
 	private static final String UPDATE = "update";

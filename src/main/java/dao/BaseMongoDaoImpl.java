@@ -27,24 +27,27 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.WriteResult;
 
+import entity.BaseEntity;
 import eyihcn.utils.CommonDaoHelper;
 import eyihcn.utils.GenericsUtils;
 
 /**
+ * 
  * @author chenyi
  *
  * @param <T>
  * @param <PK>
  */
-public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
+public abstract class BaseMongoDaoImpl<T extends BaseEntity, PK extends Serializable> {
 
-	@Autowired(required = false)
+	@Autowired
 	private MongoTemplate mongoTemplate;
 	private Class<T> entityClass; // 实体的运行是类
 	private String collectionName;// MongoTemplate 创建的数据表的名称是类名的首字母小写
 	private String orderAscField;
 	private String orderDescField;
 
+	@SuppressWarnings("unchecked")
 	public BaseMongoDaoImpl() {
 		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
 		this.collectionName = _getCollectionName();
@@ -144,7 +147,10 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
 
 	public Boolean remove(T object) {
 		try {
-			mongoTemplate.remove(object);
+			if (object.getId() == null) {
+				return false;
+			}
+			remove(Criteria.where("_id").is(object.getId()));
 		} catch (Exception e) {
 			e.printStackTrace();
 
@@ -156,7 +162,7 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
 
 	public Boolean remove(Criteria criteria) {
 		try {
-			mongoTemplate.remove(new Query(criteria), collectionName);
+			mongoTemplate.remove(new Query(criteria), this.entityClass, collectionName);
 		} catch (Exception e) {
 			e.printStackTrace();
 
@@ -170,18 +176,20 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
 		return mongoTemplate.updateMulti(new Query(criteria), update, collectionName);
 	}
 
-	public Boolean saveOrUpdate(Object object) {
+	public Boolean saveOrUpdate(T entity) {
 		try {
-			mongoTemplate.save(object, collectionName);
+			if (null == entity.getId()) {
+				entity.setId(new Long(getNextId()));
+			}
+			mongoTemplate.save(entity, collectionName);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return Boolean.valueOf(false);
 		}
-
 		return Boolean.valueOf(true);
 	}
 
-	public Boolean insert(Collection batchToSave) {
+	public Boolean insert(Collection<T> batchToSave) {
 		try {
 			mongoTemplate.insert(batchToSave, collectionName);
 		} catch (Exception e) {
@@ -465,22 +473,14 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
 	public Boolean save(Map<String, Object> requestArgs) {
 		try {
 			T object = getEntityClass().newInstance();
-			if (null == requestArgs.get("id")) {
-				requestArgs.put("id", getNextId());
-			}
 			BeanUtils.populate(object, requestArgs);
 			saveOrUpdate(object);
 		} catch (Exception e) {
 			e.printStackTrace();
-
 			return Boolean.valueOf(false);
 		}
 
 		return Boolean.valueOf(true);
-	}
-
-	public void delete(T object) {
-		remove(object);
 	}
 
 	public Boolean deleteById(PK id) {
@@ -488,7 +488,6 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
 		if (null == object) {
 			return Boolean.valueOf(false);
 		}
-
 		return remove(object);
 	}
 
@@ -513,6 +512,14 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
 		BasicDBList o = (BasicDBList) result.getRawResults().get("retval");
 
 		return o;
+	}
+
+	public MongoTemplate getMongoTemplate() {
+		return mongoTemplate;
+	}
+
+	public void setMongoTemplate(MongoTemplate mongoTemplate) {
+		this.mongoTemplate = mongoTemplate;
 	}
 
 }

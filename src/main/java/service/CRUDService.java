@@ -5,9 +5,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import dao.BaseMongoDaoImpl;
+import entity.BaseEntity;
 
 /**
  * 基础的mongodao实现CRUD; 这层算是Action和dao层的解耦
@@ -19,11 +20,15 @@ import dao.BaseMongoDaoImpl;
  * @param <PK>
  *            实体主键类型
  */
-@Repository
-public abstract class CRUDService<T, PK extends Serializable> extends BaseService<T, PK> {
+public abstract class CRUDService<T extends BaseEntity, PK extends Serializable> extends BaseService<T, PK> {
 
-	@Autowired
 	private BaseMongoDaoImpl<T, PK> commonDao;
+
+	@Autowired()
+	@Qualifier("productDao")
+	public void setCommonDao(BaseMongoDaoImpl<T, PK> commonDao) {
+		this.commonDao = commonDao;
+	}
 
 	@Override
 	public boolean daoSave(Map<String, Object> request) {
