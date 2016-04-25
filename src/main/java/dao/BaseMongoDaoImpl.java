@@ -36,7 +36,6 @@ import eyihcn.utils.GenericsUtils;
  * @param <T>
  * @param <PK>
  */
-@SuppressWarnings("unchecked")
 public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
 
 	@Autowired(required = false)

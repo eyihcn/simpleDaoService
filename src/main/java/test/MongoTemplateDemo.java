@@ -22,7 +22,7 @@ import org.springframework.web.client.RestTemplate;
 
 import entity.Product;
 
-public class TestCRUDService {
+public class MongoTemplateDemo {
 
 	private final static String url = "http://localhost:8080/testdaoservice/";
 

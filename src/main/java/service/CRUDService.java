@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import dao.BaseMongoDaoImpl;
 
@@ -18,6 +19,7 @@ import dao.BaseMongoDaoImpl;
  * @param <PK>
  *            实体主键类型
  */
+@Repository
 public abstract class CRUDService<T, PK extends Serializable> extends BaseService<T, PK> {
 
 	@Autowired
