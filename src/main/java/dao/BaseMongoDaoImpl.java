@@ -37,7 +37,7 @@ import eyihcn.utils.GenericsUtils;
  * @param <PK>
  */
 @SuppressWarnings("unchecked")
-public abstract class BaseMongoDaoImpl<T, PK extends Serializable> implements BaseDao<T> {
+public abstract class BaseMongoDaoImpl<T, PK extends Serializable> {
 
 	@Autowired(required = false)
 	private MongoTemplate mongoTemplate;
@@ -114,10 +114,6 @@ public abstract class BaseMongoDaoImpl<T, PK extends Serializable> implements Ba
 	public T findById(PK id) {
 		return mongoTemplate.findById(id, entityClass, collectionName);
 	}
-
-	// public List<T> findIds(Criteria criteria) {
-	// return mongoTemplate.find(new Query(criteria), Id.class, collectionName);
-	// }
 
 	public Boolean checkExists(Criteria criteria) {
 		Query query = new Query(criteria).limit(1);
