@@ -25,9 +25,6 @@ public abstract class BaseService<T extends BaseEntity, PK extends Serializable>
 	protected final String COLLECTION_COUNT = "collectionCount";
 	private String request = "";
 
-	public void _execute() throws Exception {
-	}
-
 
 	@RequestMapping(value = SAVE, method = RequestMethod.POST)
 	@ResponseBody

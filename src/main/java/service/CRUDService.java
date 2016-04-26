@@ -4,9 +4,6 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-
 import dao.BaseMongoDaoImpl;
 import entity.BaseEntity;
 
@@ -24,8 +21,6 @@ public abstract class CRUDService<T extends BaseEntity, PK extends Serializable>
 
 	private BaseMongoDaoImpl<T, PK> commonDao;
 
-	@Autowired()
-	@Qualifier("productDao")
 	public void setCommonDao(BaseMongoDaoImpl<T, PK> commonDao) {
 		this.commonDao = commonDao;
 	}
@@ -47,6 +42,7 @@ public abstract class CRUDService<T extends BaseEntity, PK extends Serializable>
 
 	@Override
 	public List<T> daoFindCollection(Map<String, Object> request) {
+		System.out.println("commonDao"+ commonDao);
 		return commonDao.fetchCollection(request);
 	}
 
