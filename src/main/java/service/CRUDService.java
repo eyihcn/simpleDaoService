@@ -4,11 +4,11 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-import dao.BaseMongoDaoImpl;
+import dao.BaseMongoDao;
 import entity.BaseEntity;
 
 /**
- * 基础的mongodao实现CRUD; 这层算是Action和dao层的解耦
+ * 基础的mongodao实现CRUD
  * 
  * @author chenyi
  *
@@ -19,9 +19,9 @@ import entity.BaseEntity;
  */
 public abstract class CRUDService<T extends BaseEntity, PK extends Serializable> extends BaseService<T, PK> {
 
-	private BaseMongoDaoImpl<T, PK> commonDao;
+	private BaseMongoDao<T, PK> commonDao;
 
-	public void setCommonDao(BaseMongoDaoImpl<T, PK> commonDao) {
+	public void setCommonDao(BaseMongoDao<T, PK> commonDao) {
 		this.commonDao = commonDao;
 	}
 
@@ -42,7 +42,6 @@ public abstract class CRUDService<T extends BaseEntity, PK extends Serializable>
 
 	@Override
 	public List<T> daoFindCollection(Map<String, Object> request) {
-		System.out.println("commonDao"+ commonDao);
 		return commonDao.fetchCollection(request);
 	}
 
@@ -54,6 +53,16 @@ public abstract class CRUDService<T extends BaseEntity, PK extends Serializable>
 	@Override
 	public boolean daoDeleteById(PK id) {
 		return commonDao.deleteById(id);
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public Long counts(Map<String, Object> request) {
+		Map<String,Object> query = (Map<String, Object>) request.get("query");
+		if (query == null) {
+			return null;
+		}
+		return commonDao.count(query);
 	}
 
 }

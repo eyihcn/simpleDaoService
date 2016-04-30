@@ -18,11 +18,6 @@ public class ProductController extends CRUDService<Product, Long> {
 	@Autowired()
 	@Qualifier("productDao")
 	public void setCommonDao(ProductDao productDao) {
-		System.out.println("productDao"+productDao);
 		super.setCommonDao(productDao);
-	}
-	
-	public ProductController() {
-		System.out.println("ProductController" + this);
 	}
 }

@@ -2,7 +2,6 @@ package service;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -12,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import entity.BaseEntity;
-import eyihcn.utils.Json;
 
 public abstract class BaseService<T extends BaseEntity, PK extends Serializable> {
 
@@ -21,10 +19,9 @@ public abstract class BaseService<T extends BaseEntity, PK extends Serializable>
 	private static final String FIND_ONE = "findOne";
 	private static final String DELETE_BY_ID = "deleteById";
 	private static final String FIND_LIST = "findList";
+	private static final String COUNTS = "counts";
 	protected final String COLLECTION = "collection";
 	protected final String COLLECTION_COUNT = "collectionCount";
-	private String request = "";
-
 
 	@RequestMapping(value = SAVE, method = RequestMethod.POST)
 	@ResponseBody
@@ -104,17 +101,19 @@ public abstract class BaseService<T extends BaseEntity, PK extends Serializable>
 		return serviceResponse;
 	}
 
-	public abstract boolean daoDeleteById(@RequestBody PK id);
-
-	@SuppressWarnings("unchecked")
-	public Map<String, Object> getRequest() {
-		return Json.fromJson(request, LinkedHashMap.class);
+	@RequestMapping(value=COUNTS, method=RequestMethod.POST)
+    @ResponseBody
+	public ServiceResponse countsWishToBePublished(@RequestBody Map<String, Object> request) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			serviceResponse.setResult(counts(request));
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
 	}
-
-	public void setRequest(String request) {
-		this.request = request;
-	}
-
+	
 	/*
 	 * 以下的抽象查询方法由具体的提供dao实现
 	 */
@@ -128,4 +127,7 @@ public abstract class BaseService<T extends BaseEntity, PK extends Serializable>
 
 	public abstract Long daoFindCollectionCount(Map<String, Object> request);
 
+	public abstract boolean daoDeleteById(@RequestBody PK id);
+	
+	public abstract Long counts(Map<String, Object> request);
 }

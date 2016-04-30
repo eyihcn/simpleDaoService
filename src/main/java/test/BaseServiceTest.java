@@ -7,7 +7,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.util.LinkedMultiValueMap;
@@ -23,9 +22,9 @@ public class BaseServiceTest {
 
 	@Before
 	public void setup() {
-		System.out.println("before");
-		this.applicationContext = new ClassPathXmlApplicationContext("classpath:/testMongoTemplate/mongo.xml");
-		this.mongoDao = this.applicationContext.getBean(MongoTemplate.class);
+//		System.out.println("before");
+//		this.applicationContext = new ClassPathXmlApplicationContext("classpath:/testMongoTemplate/mongo.xml");
+//		this.mongoDao = this.applicationContext.getBean(MongoTemplate.class);
 	}
 
 	@After

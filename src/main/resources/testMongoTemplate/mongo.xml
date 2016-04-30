@@ -10,24 +10,10 @@
     http://www.springframework.org/schema/beans
     http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
-	<context:component-scan base-package="dao"></context:component-scan>
+<!-- 	<context:component-scan base-package="dao" use-default-filters="true"> -->
+<!-- 		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/> -->
+<!-- 		<context:include-filter type="annotation" expression="org.springframework.stereotype.Repository"/> -->
+<!-- 	</context:component-scan> -->
 
-    <bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
-        <constructor-arg name="mongo" ref="mongo"/>
-        <constructor-arg name="databaseName" value="jtomtoperp"/>
-<!--         <constructor-arg name="userCredentials" ref="mongoCredentials"/> -->
-    </bean>
-
-<!--     <bean id="mongoCredentials" class="org.springframework.data.authentication.UserCredentials"> -->
-<!--         <constructor-arg name="username" value="${mongo.username}" /> -->
-<!--         <constructor-arg name="password" value="${mongo.password}" /> -->
-<!--     </bean> -->
-
-<!-- 	<bean id="baseMongoDaoImpl" class="dao.BaseMongoDaoImpl"/> -->
-
-    <mongo:mongo host="127.0.0.1" port="27017">
-        <mongo:options connections-per-host="60"
-            threads-allowed-to-block-for-connection-multiplier="150"
-            connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
-    </mongo:mongo>
+    
 </beans>

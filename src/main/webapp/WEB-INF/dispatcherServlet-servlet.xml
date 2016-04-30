@@ -1,14 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
-	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:mongo="http://www.springframework.org/schema/data/mongo"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
-		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd">
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+		  http://www.springframework.org/schema/data/mongo
+    http://www.springframework.org/schema/data/mongo/spring-mongo-1.0.xsd
+    http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-4.0.xsd">
 
 	<!-- 配置自定扫描的包 -->
-	<context:component-scan base-package="service"></context:component-scan>
+	<context:component-scan base-package="action,dao">
+	</context:component-scan>
 
+
+	<bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
+		<constructor-arg name="mongo" ref="mongo" />
+		<constructor-arg name="databaseName" value="jtomtoperp" />
+		<!-- <constructor-arg name="userCredentials" ref="mongoCredentials"/> -->
+	</bean>
+
+	<!-- <bean id="mongoCredentials" class="org.springframework.data.authentication.UserCredentials"> -->
+	<!-- <constructor-arg name="username" value="${mongo.username}" /> -->
+	<!-- <constructor-arg name="password" value="${mongo.password}" /> -->
+	<!-- </bean> -->
+
+	<!-- <bean id="baseMongoDaoImpl" class="dao.BaseMongoDaoImpl"/> -->
+
+	<mongo:mongo host="127.0.0.1" port="27017">
+		<mongo:options connections-per-host="60"
+			threads-allowed-to-block-for-connection-multiplier="150"
+			connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
+	</mongo:mongo>
 	<!-- 配置视图解析器: 如何把 handler 方法返回值解析为实际的物理视图 -->
 	<bean
 		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
@@ -29,13 +53,12 @@
 	</bean>
 
 	<!-- 配置直接转发的页面 -->
-	<!-- 可以直接相应转发的页面, 而无需再经过 Handler 的方法.
-	<mvc:view-controller path="/success" view-name="success" /> 
-	-->
+	<!-- 可以直接相应转发的页面, 而无需再经过 Handler 的方法. <mvc:view-controller path="/success" 
+		view-name="success" /> -->
 
 	<!-- 在实际开发中通常都需配置 mvc:annotation-driven 标签 -->
 	<mvc:annotation-driven></mvc:annotation-driven>
-	<mvc:default-servlet-handler/>
+	<mvc:default-servlet-handler />
 	<bean
 		class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
 		<property name="messageConverters">
@@ -50,7 +73,6 @@
 			<list>
 				<value>application/json;charset=UTF-8</value>
 			</list>
-
 		</property>
 	</bean>
 </beans>

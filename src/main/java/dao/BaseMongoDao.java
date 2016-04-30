@@ -38,7 +38,7 @@ import eyihcn.utils.GenericsUtils;
  * @param <T>
  * @param <PK>
  */
-public abstract class BaseMongoDaoImpl<T extends BaseEntity, PK extends Serializable> {
+public abstract class BaseMongoDao<T extends BaseEntity, PK extends Serializable> {
 
 	@Autowired
 	private MongoTemplate mongoTemplate;
@@ -48,18 +48,18 @@ public abstract class BaseMongoDaoImpl<T extends BaseEntity, PK extends Serializ
 	private String orderDescField;
 
 	@SuppressWarnings("unchecked")
-	public BaseMongoDaoImpl() {
+	public BaseMongoDao() {
 		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
 		this.collectionName = _getCollectionName();
 	}
 
-	public BaseMongoDaoImpl(Class<T> entityClass) {
+	public BaseMongoDao(Class<T> entityClass) {
 		this.entityClass = entityClass;
 
 		collectionName = _getCollectionName();
 	}
 
-	public BaseMongoDaoImpl(Class<T> entityClass, String collectionName) {
+	public BaseMongoDao(Class<T> entityClass, String collectionName) {
 		this.entityClass = entityClass;
 
 		this.collectionName = collectionName;
@@ -70,6 +70,11 @@ public abstract class BaseMongoDaoImpl<T extends BaseEntity, PK extends Serializ
 	}
 
 	public long count(Criteria criteria) {
+		return mongoTemplate.count(new Query(criteria), collectionName);
+	}
+	
+	public long count(Map<String,Object> query) {
+		Criteria criteria = getRequestRestriction(query);
 		return mongoTemplate.count(new Query(criteria), collectionName);
 	}
 
@@ -521,5 +526,4 @@ public abstract class BaseMongoDaoImpl<T extends BaseEntity, PK extends Serializ
 	public void setMongoTemplate(MongoTemplate mongoTemplate) {
 		this.mongoTemplate = mongoTemplate;
 	}
-
 }
