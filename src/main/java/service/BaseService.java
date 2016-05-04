@@ -19,9 +19,10 @@ public abstract class BaseService<T extends BaseEntity, PK extends Serializable>
 	private static final String FIND_ONE = "findOne";
 	private static final String DELETE_BY_ID = "deleteById";
 	private static final String FIND_LIST = "findList";
+	private static final String FIND_COLLECTION = "findCollection";
 	private static final String COUNTS = "counts";
-	protected final String COLLECTION = "collection";
-	protected final String COLLECTION_COUNT = "collectionCount";
+	protected static final String COLLECTION = "collection";
+	protected static final String COLLECTION_COUNT = "collectionCount";
 
 	@RequestMapping(value = SAVE, method = RequestMethod.POST)
 	@ResponseBody
@@ -69,7 +70,7 @@ public abstract class BaseService<T extends BaseEntity, PK extends Serializable>
 	}
 
 
-	@RequestMapping(value = FIND_LIST, method = RequestMethod.POST)
+	@RequestMapping(value = FIND_COLLECTION, method = RequestMethod.POST)
 	@ResponseBody
 	public ServiceResponse findCollection(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
@@ -78,6 +79,19 @@ public abstract class BaseService<T extends BaseEntity, PK extends Serializable>
 			collectionInfo.put(COLLECTION, daoFindCollection(request));
 			collectionInfo.put(COLLECTION_COUNT, daoFindCollectionCount(request));
 			serviceResponse.setResult(collectionInfo);
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
+	@RequestMapping(value = FIND_LIST, method = RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse findList(@RequestBody Map<String, Object> request) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			serviceResponse.setResult(findList(request));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
