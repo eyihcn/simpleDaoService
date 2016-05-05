@@ -35,27 +35,28 @@ import eyihcn.utils.GenericsUtils;
  * 
  * @author chenyi
  *
- * @param <T>
- * @param <PK>
+ * @param <T>实体类型
+ * @param <PK>主键类型
  */
-public abstract class BaseMongoDao<T extends BaseEntity, PK extends Serializable> {
+@SuppressWarnings({ "unchecked", "rawtypes" })
+public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 
 	@Autowired
 	private MongoTemplate mongoTemplate;
 	private Class<T> entityClass; // 实体的运行是类
+	private Class<PK> pkClass; // 实体的运行是类
 	private String collectionName;// MongoTemplate 创建的数据表的名称是类名的首字母小写
 	private String orderAscField;
 	private String orderDescField;
 
-	@SuppressWarnings("unchecked")
 	public BaseMongoDao() {
 		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
+		this.pkClass = 	GenericsUtils.getSuperClassGenericType(this.getClass(), 1);
 		this.collectionName = _getCollectionName();
 	}
 
 	public BaseMongoDao(Class<T> entityClass) {
 		this.entityClass = entityClass;
-
 		collectionName = _getCollectionName();
 	}
 
@@ -184,7 +185,7 @@ public abstract class BaseMongoDao<T extends BaseEntity, PK extends Serializable
 	public Boolean saveOrUpdate(T entity) {
 		try {
 			if (null == entity.getId()) {
-				entity.setId(new Long(getNextId()));
+				entity.setId(pkClass.getConstructor(String.class).newInstance(getNextId()));
 			}
 			mongoTemplate.save(entity, collectionName);
 		} catch (Exception e) {
@@ -417,7 +418,6 @@ public abstract class BaseMongoDao<T extends BaseEntity, PK extends Serializable
 			Object ids = requestArgs.get("ids");
 			if (null != ids) {
 				Update update = new Update();
-
 				Map updates = (Map) requestArgs.get("updates");
 				updates.remove("id");
 				updates.remove("ids");
@@ -431,7 +431,6 @@ public abstract class BaseMongoDao<T extends BaseEntity, PK extends Serializable
 				for (Object perUpdates : allUpdates) {
 					Object id = ((Map) perUpdates).get("id");
 					if (null != id) {
-
 						Update update = new Update();
 						((Map) perUpdates).remove("id");
 						((Map) perUpdates).remove("class");
@@ -443,9 +442,7 @@ public abstract class BaseMongoDao<T extends BaseEntity, PK extends Serializable
 				}
 			}
 		} catch (Exception e) {
-			Map<String, Object> updates;
 			e.printStackTrace();
-
 			return Boolean.valueOf(false);
 		}
 
@@ -484,7 +481,6 @@ public abstract class BaseMongoDao<T extends BaseEntity, PK extends Serializable
 			e.printStackTrace();
 			return Boolean.valueOf(false);
 		}
-
 		return Boolean.valueOf(true);
 	}
 
@@ -497,7 +493,7 @@ public abstract class BaseMongoDao<T extends BaseEntity, PK extends Serializable
 	}
 
 	public BasicDBList group(Map<String, Object> requestArgs) throws Exception {
-		Criteria criteria = getRequestRestriction((HashMap) requestArgs.get("query"));
+		Criteria criteria = getRequestRestriction((HashMap<String, Object>) requestArgs.get("query"));
 		HashMap<String, String> groupConditions = (HashMap) requestArgs.get("group");
 		if (null == groupConditions) {
 			return null;

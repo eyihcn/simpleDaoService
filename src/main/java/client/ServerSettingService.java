@@ -8,9 +8,6 @@ import java.util.Map;
 
 import org.apache.commons.beanutils.BeanUtils;
 
-import com.tomtop.application.orm.admin.ServerPortSetting;
-import com.tomtop.system.service.RestBasicService;
-import com.tomtop.system.service.ServerSettingBasicService;
 
 public class ServerSettingService extends RestBasicService {
 	//ServerPortSetting.class

@@ -15,11 +15,17 @@ import java.util.Set;
 import org.apache.commons.beanutils.BeanUtils;
 import org.junit.Test;
 
+import client.ModelCode;
+
+@ModelCode(modelName="sale")
 public class BaseTest {
 	
 	@Test
 	public void test5() {
-		System.out.println(this.getClass().getPackage().getName());
+		ModelCode annotation = this.getClass().getAnnotation(ModelCode.class);
+		System.out.println(annotation.modelName());
+		System.out.println(annotation.serviceCode());
+		
 	}
 
 	@Test

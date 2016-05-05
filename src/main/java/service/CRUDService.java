@@ -17,9 +17,9 @@ import entity.BaseEntity;
  * @param <PK>
  *            实体主键类型
  */
-public abstract class CRUDService<T extends BaseEntity, PK extends Serializable> extends BaseService<T, PK> {
+public abstract class CRUDService<T extends BaseEntity<PK>, PK extends Serializable> extends BaseService<T, PK> {
 
-	private BaseMongoDao<T, PK> commonDao;
+	protected BaseMongoDao<T, PK> commonDao;
 
 	public void setCommonDao(BaseMongoDao<T, PK> commonDao) {
 		this.commonDao = commonDao;

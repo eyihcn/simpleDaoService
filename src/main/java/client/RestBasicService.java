@@ -14,6 +14,7 @@ package client;
 /*     */ import org.springframework.util.MultiValueMap;
 /*     */ import org.springframework.web.client.RestTemplate;
 
+import service.ResponseStatus;
 import eyihcn.utils.Json;
 import eyihcn.utils.ServiceQueryHelper;
 import eyihcn.utils.ServiceSorterHelper;
@@ -350,7 +351,7 @@ import eyihcn.utils.ServiceSorterHelper;
 /*     */   
 /*     */   public Boolean checkSuccess() {
 /* 347 */     if ((null != serviceResult) && (null != serviceResult.get("code")) && (
-/* 348 */       (ServiceResponseCode.SUCCESS.equals(serviceResult.get("code"))) || ((ServiceResponseCode.ERROR.equals(serviceResult.get("code"))) && (null != serviceResult.get("result"))))) {
+/* 348 */       (ResponseStatus.SUCCESS.getCode().equals(serviceResult.get("code"))) || ((ServiceResponseCode.ERROR.equals(serviceResult.get("code"))) && (null != serviceResult.get("result"))))) {
 /* 349 */       return Boolean.valueOf(true);
 /*     */     }
 /*     */     

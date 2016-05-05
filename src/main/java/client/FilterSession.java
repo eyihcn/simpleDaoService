@@ -1,12 +1,7 @@
-/*     */ package com.tomtop.system.core.session.page;
-/*     */ 
-/*     */ /*     */ import java.sql.Timestamp;
-/*     */ import java.util.ArrayList;
-/*     */ import java.util.Enumeration;
-/*     */ import java.util.HashMap;
-/*     */ import java.util.LinkedHashMap;
-/*     */ import java.util.List;
-/*     */ import java.util.Map;
+package client;
+
+import java.util.HashMap;
+
 /*     */ 
 /*     */ 
 /*     */ 
@@ -487,8 +482,3 @@
 /*     */   }
 /*     */ }
 
-/* Location:           D:\maven_repo\com\tomtop\jtomtoperp-system\1.1.4\jtomtoperp-system-1.1.4.jar
- * Qualified Name:     com.tomtop.system.core.session.page.FilterSession
- * Java Class Version: 8 (52.0)
- * JD-Core Version:    0.7.1
- */

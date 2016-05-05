@@ -4,7 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document
-public class Product extends BaseEntity {
+public class Product extends BaseEntity<Long> {
 
 	private static final long serialVersionUID = -4500237646756252887L;
 	@Id
