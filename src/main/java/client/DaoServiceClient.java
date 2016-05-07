@@ -38,7 +38,7 @@ import eyihcn.utils.ServiceQueryHelper;
   *
   */
 @SuppressWarnings({"unchecked","rawtypes"})
- public abstract class BasicServiceClient<T extends BaseEntity<PK>,PK extends Serializable> {
+ public abstract class DaoServiceClient<T extends BaseEntity<PK>,PK extends Serializable> {
 	 
 		private static final String SAVE = "save";
 		private static final String UPDATE = "update";
@@ -73,7 +73,7 @@ import eyihcn.utils.ServiceQueryHelper;
 		private static Map<String, Map<String, String>> serviceRouterConfigs = new HashMap<String, Map<String,String>>();
 		private int timeOut = -1;
 	   
-		public BasicServiceClient() {
+		public DaoServiceClient() {
 			ModelCode modelCode = this.getClass().getAnnotation(ModelCode.class);
 			if (null == modelCode) {
 				throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
