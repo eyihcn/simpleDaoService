@@ -7,7 +7,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import service.CRUDService;
-import dao.ProductDao;
+import dao.BaseMongoDao;
 import entity.Product;
 
 @Controller
@@ -15,9 +15,13 @@ import entity.Product;
 @RequestMapping("sale/product")
 public class ProductController extends CRUDService<Product, Long> {
 
+	public ProductController() {
+		System.out.println();
+	}
+	
 	@Autowired()
 	@Qualifier("productDao")
-	public void setCommonDao(ProductDao productDao) {
+	public void setCommonDao(BaseMongoDao<Product, Long> productDao) {
 		super.setCommonDao(productDao);
 	}
 }

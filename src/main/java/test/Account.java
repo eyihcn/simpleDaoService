@@ -2,7 +2,7 @@ package test;
 
 import entity.BaseEntity;
 
-public class Account extends BaseEntity {
+public class Account extends BaseEntity<Long> {
 
 	private Long id;
 	private String accounName;

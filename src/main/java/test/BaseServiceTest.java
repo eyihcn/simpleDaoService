@@ -1,7 +1,6 @@
 package test;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 
 import org.junit.After;
 import org.junit.Before;
@@ -12,6 +11,8 @@ import org.springframework.http.HttpEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+
+import service.ServiceResponse;
 
 public class BaseServiceTest {
 
@@ -45,8 +46,15 @@ public class BaseServiceTest {
 		System.out.println(requestBody);
 		HttpEntity httpEntity = new HttpEntity("{}", headers);
 
-		LinkedHashMap linkedHashMap = restTemplate.postForObject(url + "sale/product/findList", httpEntity, LinkedHashMap.class, new Object[0]);
-		System.out.println(linkedHashMap.toString());
+//		LinkedHashMap linkedHashMap = restTemplate.postForObject(url + "sale/product/findList", httpEntity, LinkedHashMap.class, new Object[0]);
+//		String json  = restTemplate.postForObject(url + "sale/product/findList", httpEntity, String.class, new Object[0]);
+		ServiceResponse json  = restTemplate.postForObject(url + "sale/product/findList", httpEntity, ServiceResponse.class, new Object[0]);
+		System.out.println(json);
+		System.out.println(json.getDescription());
+		
+		//		ServiceResponse<?> fromJson = Json.fromJson(json, ServiceResponse.class);
+//		System.out.println(fromJson);
+//		System.out.println(fromJson.getResult());
 	}
 
 

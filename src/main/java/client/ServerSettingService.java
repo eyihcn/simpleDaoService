@@ -9,7 +9,7 @@ import java.util.Map;
 import org.apache.commons.beanutils.BeanUtils;
 
 
-public class ServerSettingService extends RestBasicService {
+public class ServerSettingService extends BasicServiceClient {
 	//ServerPortSetting.class
 	private final String CREATE_SERVER_PORT_SETTING_ENTRY						= "/serverSetting/createServerPortSetting";
     private final String DELETE_SERVER_PORT_SETTING_ENTRY                      	= "/serverSetting/deleteServerPortSetting";
