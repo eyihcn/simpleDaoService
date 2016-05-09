@@ -64,7 +64,7 @@ import eyihcn.utils.ServiceQueryHelper;
 		private String findCollectionEntry;
 		private String[] ormPackageNames;
 	 
-		private String serviceAddress;
+		private String host;
 		private String serviceEntry;
 		private String serviceRequest;
 		private Map<String, Object> serviceResult = new HashMap<String, Object>();
@@ -198,18 +198,18 @@ import eyihcn.utils.ServiceQueryHelper;
      if (null == serviceConfig) {
        String serviceAddressKey = "JTOMTOPERP_" + code + "_SERVICE_ADDRESS";
        String serviceTokenKey = "JTOMTOPERP_" + code + "_SERVICE_TOKEN";
-       serviceAddress = System.getenv(serviceAddressKey);
-       if (null == serviceAddress)
+       host = System.getenv(serviceAddressKey);
+       if (null == host)
        {
          ServerSettingService sss = new ServerSettingService();
          ServerPortSetting sp = sss.fetchServerPortSettingByCode(code);
          if (null == sp) {
            System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^error: no server config!");
          } else {
-           serviceAddress = sp.getAddress();
+           host = sp.getAddress();
            serviceToken = sp.getToken();
            serviceConfig = new HashMap<String, String>();
-           serviceConfig.put("ADDRESS", serviceAddress);
+           serviceConfig.put("ADDRESS", host);
            serviceConfig.put("TOKEN", serviceToken);
            serviceRouterConfigs.put(code, serviceConfig);
          }
@@ -217,7 +217,7 @@ import eyihcn.utils.ServiceQueryHelper;
          serviceToken = System.getenv(serviceTokenKey);
        }
      } else {
-       serviceAddress = ((String)serviceConfig.get("ADDRESS"));
+       host = ((String)serviceConfig.get("ADDRESS"));
        serviceToken = ((String)serviceConfig.get("TOKEN"));
      }
    }
@@ -349,11 +349,11 @@ import eyihcn.utils.ServiceQueryHelper;
    }
    
    public String getServiceAddress() {
-     return serviceAddress;
+     return host;
    }
    
    public void setServiceAddress(String serviceAddress) {
-     this.serviceAddress = serviceAddress;
+     this.host = serviceAddress;
    }
    
    public String getServiceEntry() {
