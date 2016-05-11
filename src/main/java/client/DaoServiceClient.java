@@ -1,7 +1,6 @@
 package client;
 
- 
- import java.io.Serializable;
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -30,487 +29,514 @@ import entity.BaseEntity;
 import eyihcn.utils.GenericsUtils;
 import eyihcn.utils.Json;
 import eyihcn.utils.ServiceQueryHelper;
- 
- /**
-  * daoService请求的client
-  * 抽象基本的crud ,数据库项目按系统模块部署到不同的服务器
-  * @author eyihcn 
-  *
-  */
-@SuppressWarnings({"unchecked","rawtypes"})
- public abstract class DaoServiceClient<T extends BaseEntity<PK>,PK extends Serializable> {
-	 
-		private static final String SAVE = "save";
-		private static final String UPDATE = "update";
-		private static final String FIND_ONE = "findOne";
-		private static final String DELETE_BY_ID = "deleteById";
-		private static final String FIND_LIST = "findList";
-		private static final String FIND_COLLECTION = "findCollection";
-		private static final String COUNTS = "counts";
-		protected static final String COLLECTION = "collection";
-		protected static final String COLLECTION_COUNT = "collectionCount";
-		protected static final String SEPARATOR = "/";
+
+/**
+ * daoService请求的client 抽象基本的crud ,数据库项目按系统模块部署到不同的服务器 1. 可以使用自己定义的请求Entry 2.
+ * 可以使用系统约定的crud的Entry
+ * 
+ * 对于DaoService的分布在不同的服务器 模块名-------》主机IP
+ * 
+ * @author eyihcn
+ * 
+ */
+@SuppressWarnings({ "unchecked", "rawtypes" })
+public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Serializable> {
+
+	private RestTemplate restTemplate = new RestTemplate();
+	private static Map<String, Map<String, String>> serviceRouterConfigs = new HashMap<String, Map<String, String>>();
+
+	private static final String SAVE = "save";
+	private static final String UPDATE = "update";
+	private static final String FIND_ONE = "findOne";
+	private static final String DELETE_BY_ID = "deleteById";
+	private static final String FIND_LIST = "findList";
+	private static final String FIND_COLLECTION = "findCollection";
+	private static final String COUNTS = "counts";
+	protected static final String COLLECTION = "collection";
+	protected static final String COLLECTION_COUNT = "collectionCount";
+	protected static final String SEPARATOR = "/";
+
+	private String serviceTokenCode;
+	private String modelName;
+	private Class<T> entityClass;
+	private String entityClassName; // simpleName
+	private String saveURL;
+	private String updateURL;
+	private String findOneURL;
+	private String deleteByIdURL;
+	private String findListURL;
+	private String countsURL;
+	private String findCollectionURL;
+	private String[] ormPackageNames;
+
+	private String host; // 主机
+	private String token; // 令牌
+	private String serviceEntry; 
+	private String serviceRequest;
+	private Map<String, Object> serviceResult = new HashMap<String, Object>();
+	private int timeOut = -1;
+	
+	private String requestUrl;
+
+	public DaoServiceClient() {
+		ModelCode modelCode = this.getClass().getAnnotation(ModelCode.class);
+		if (null == modelCode) {
+			throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
+		}
+		String serviceCode = modelCode.serviceCode();
+		String modelName = modelCode.modelName();
+		if (StringUtils.isBlank(serviceCode) || StringUtils.isBlank(modelName)) {
+			throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
+		}
+		this.serviceTokenCode = serviceCode;
+		this.modelName = modelName;
+		// init(serviceTokenCode);
+		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
+		this.entityClassName = this.entityClass.getSimpleName();
+		initCrudServiceEntry();
+	}
+
+	/**
+	 * 初始化请求的Host和Token
+	 */
+	protected void initRquestHostAndToken() {
+		String serviceAddressKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_ADDRESS";
+		String serviceTokenKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_TOKEN";
+		// 1. 先从缓存取host 和 token
+		Map<String, String> serviceConfig = serviceRouterConfigs.get(serviceTokenCode);
+		if (null != serviceConfig) {
+			host = ((String) serviceConfig.get("ADDRESS"));
+			token = ((String) serviceConfig.get("TOKEN"));
+			return;
+		}
+		// 2. 若缓存中没有，从系统变量中获取
+		host = System.getenv(serviceAddressKey);
+		if (null != host) {
+			token = System.getenv(serviceTokenKey);
+			return ;
+		}
+		// 3. 若系统变量中没有，查询数据库配置
+		ServerSettingService sss = new ServerSettingService();
+		ServerPortSetting sp = sss.fetchServerPortSettingByCode(serviceTokenCode);
+		if (null == sp) {
+			throw new RuntimeException("no server config! serviceTokenCode=[" +serviceTokenCode+"]");
+		}
+		host = sp.getAddress();
+		token = sp.getToken();
+		// 缓存
+		serviceConfig = new HashMap<String, String>();
+		serviceConfig.put("ADDRESS", host);
+		serviceConfig.put("TOKEN", token);
+		serviceRouterConfigs.put(serviceTokenCode, serviceConfig);
+	}
+
+	/**
+	 * 提供默认实现，也可以被覆盖，提高orm的所有包名
+	 * 
+	 * @return
+	 */
+	public String[] prepareOrmPackageNames() {
+		String[] names = { "" };
+		return names;
+	}
+
+	/**
+	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
+	 */
+	private void initCrudServiceEntry() {
+		this.saveURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + SAVE;
+		this.updateURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + UPDATE;
+		this.findOneURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + FIND_ONE;
+		this.deleteByIdURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + DELETE_BY_ID;
+		this.findListURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + FIND_LIST;
+		this.countsURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + COUNTS;
+		this.findCollectionURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + FIND_COLLECTION;
+	}
+
+	public Object request(String requsetURL) {
 		
-		private String serviceTokenCode;
-		private String modelName;
-		private Class<T> entityClass;
-		private String entityClassName; // simpleName
-		private String saveEntry;
-		private String updateEntry;
-		private String findOneEntry;
-		private String deleteByIdEntry;
-		private String findListEntry;
-		private String countsEntry;
-		private String findCollectionEntry;
-		private String[] ormPackageNames;
-	 
-		private String host;
-		private String serviceEntry;
-		private String serviceRequest;
-		private Map<String, Object> serviceResult = new HashMap<String, Object>();
-		private String serviceToken;
-		private RestTemplate restTemplate = new RestTemplate();
-		private static Map<String, Map<String, String>> serviceRouterConfigs = new HashMap<String, Map<String,String>>();
-		private int timeOut = -1;
-	   
-		public DaoServiceClient() {
-			ModelCode modelCode = this.getClass().getAnnotation(ModelCode.class);
-			if (null == modelCode) {
-				throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
+		return null;
+	}
+	
+	
+	private Object _request() {
+		try {
+			String requestUrl = StringUtils.stripEnd(getServiceAddress(), "/") + StringUtils.stripEnd(getServiceEntry(), "/") + "?token=" + getServiceToken();
+			if (null == getServiceRequest()) {
+				setServiceRequest("{}");
 			}
-			String serviceCode = modelCode.serviceCode();
-			String modelName = modelCode.modelName();
-			if (StringUtils.isBlank(serviceCode) || StringUtils.isBlank(modelName)) {
-				throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
-			}
-			this.serviceTokenCode = serviceCode;
-			this.modelName = modelName;
-			init(serviceTokenCode);
-			this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
-			this.entityClassName = this.entityClass.getSimpleName();
-			initCrudServiceEntry();
-		}
+			System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion " + StringUtils.stripEnd(getServiceAddress(), "/") + StringUtils.stripEnd(getServiceEntry(), "/"));
+			System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion " + getServiceRequest());
 
-		/**
-		 * 提供默认实现，也可以被覆盖，提高orm的所有包名
-		 * 
-		 * @return
-		 */
-		public String[] prepareOrmPackageNames() {
-			String[] names = { "" };
-			return names;
-		}
+			MultiValueMap<String, Object> headers = new LinkedMultiValueMap();
+			headers.add("Accept", "application/json;charset=utf-8");
+			headers.add("Content-Type", "application/json;charset=utf-8");
+			String requestBody = getServiceRequest();
+			HttpEntity httpEntity = new HttpEntity(requestBody, headers);
 
-		/**
-		 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
-		 */
-		private void initCrudServiceEntry() {
-			this.saveEntry = SEPARATOR+modelName+SEPARATOR+entityClassName+SEPARATOR+SAVE;
-			this.updateEntry = SEPARATOR+modelName+SEPARATOR+entityClassName+SEPARATOR+UPDATE;
-			this.findOneEntry = SEPARATOR+modelName+SEPARATOR+entityClassName+SEPARATOR+FIND_ONE;
-			this.deleteByIdEntry = SEPARATOR+modelName+SEPARATOR+entityClassName+SEPARATOR+DELETE_BY_ID;
-			this.findListEntry = SEPARATOR+modelName+SEPARATOR+entityClassName+SEPARATOR+FIND_LIST;
-			this.countsEntry = SEPARATOR+modelName+SEPARATOR+entityClassName+SEPARATOR+COUNTS;
-			this.countsEntry = SEPARATOR+modelName+SEPARATOR+entityClassName+SEPARATOR+COUNTS;
-			this.findCollectionEntry = SEPARATOR+modelName+SEPARATOR+entityClassName+SEPARATOR+FIND_COLLECTION;
-		}
-   
-		public Map<String, Object> findEntityCollection() {
-			return findEntityCollection(null);
-		}
+			serviceResult = ((Map) restTemplate.postForObject(requestUrl, httpEntity, LinkedHashMap.class, new Object[0]));
 
-		public Map<String, Object> findEntityCollection(Map<String, Object> query) {
-			setServiceEntry(findCollectionEntry);
-			Map<String, Object> map = null;
-	 		if (MapUtils.isEmpty(query)) {
-	 			map = getCollection();
-			}else {
-				map = getCollection(query);
-			}
-			List<T> entityCol = new ArrayList<T>();
-			if (null != map) {
-				for (Map<String, Object> o : (List<Map<String, Object>>) map.get(COLLECTION)) {
-					entityCol.add(_mapToEntity(entityClass, o, ormPackageNames));
-				}
-				map.put(COLLECTION, entityCol);
-			}
-			return map;
-		}
+			activateTimeOut();
 
-		public List<T> findEntityList(Map<String, Object> query, Map<String, Object> sort,Map<String, Object> pagination) {
-			setServiceEntry(findListEntry);
-			setServiceRequestQuery(query, sort, pagination);
-			List<Map<String, Object>> result = requestList();
-			List<T> entityList = new LinkedList<T>();
-			if (null != result) {
-				for (Map<String, Object> data : result) {
-					entityList.add(_mapToEntity(entityClass, data, ormPackageNames));
-				}
-			}
-			return entityList;
-		}
-
-		public  T findEntity(Map<String, Object> request) {
-			setServiceEntry(findOneEntry);
-			setServiceRequestQuery(request, null, null);
-			return _mapToEntity(entityClass, (Map<String, Object>) request(), ormPackageNames);
-		}
-
-		public T findEntityById(Integer id) {
-			if (null == id) {
+			if (!serviceResult.containsKey("code")) {
+				serviceResult.put("code", ResponseStatus.ERROR.getCode());
 				return null;
 			}
-			Map<String, Object> request = new HashMap<String, Object>();
-			ServiceQueryHelper.and(request, "_id", id);
-			return findEntity(request);
+
+			if (null != serviceResult.get("result")) {
+				return serviceResult.get("result");
+			}
+		} catch (Exception e) {
+			serviceResult.put("code", ResponseStatus.ERROR.getCode());
+			e.printStackTrace();
 		}
 
-		public boolean createEntity(Object object) {
-			setServiceEntry(saveEntry);
-			setServiceRequestCreate(object);
-			request();
-			return checkSuccess();
+		return null;
+	}
+	
+	public Map<String, Object> findEntityCollection() {
+		return findEntityCollection(null);
+	}
+
+	public Map<String, Object> findEntityCollection(Map<String, Object> query) {
+		setServiceEntry(findCollectionURL);
+		Map<String, Object> map = null;
+		if (MapUtils.isEmpty(query)) {
+			map = getCollection();
+		} else {
+			map = getCollection(query);
+		}
+		List<T> entityCol = new ArrayList<T>();
+		if (null != map) {
+			for (Map<String, Object> o : (List<Map<String, Object>>) map.get(COLLECTION)) {
+				entityCol.add(_mapToEntity(entityClass, o, ormPackageNames));
+			}
+			map.put(COLLECTION, entityCol);
+		}
+		return map;
+	}
+
+	public List<T> findEntityList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
+		setServiceEntry(findListURL);
+		setServiceRequestQuery(query, sort, pagination);
+		List<Map<String, Object>> result = requestList();
+		List<T> entityList = new LinkedList<T>();
+		if (null != result) {
+			for (Map<String, Object> data : result) {
+				entityList.add(_mapToEntity(entityClass, data, ormPackageNames));
+			}
+		}
+		return entityList;
+	}
+
+	public T findEntity(Map<String, Object> request) {
+		setServiceEntry(findOneURL);
+		setServiceRequestQuery(request, null, null);
+		return _mapToEntity(entityClass, (Map<String, Object>) request(), ormPackageNames);
+	}
+
+	public T findEntityById(Integer id) {
+		if (null == id) {
+			return null;
+		}
+		Map<String, Object> request = new HashMap<String, Object>();
+		ServiceQueryHelper.and(request, "_id", id);
+		return findEntity(request);
+	}
+
+	public boolean createEntity(Object object) {
+		setServiceEntry(saveURL);
+		setServiceRequestCreate(object);
+		request();
+		return checkSuccess();
+	}
+
+	public boolean updateEntity(Object object) {
+		setServiceEntry(updateURL);
+		setServiceRequestUpdate(object);
+		request();
+		return checkSuccess();
+	}
+
+	public boolean deleteEntityById(Integer id) {
+		setServiceEntry(deleteByIdURL);
+		setServiceRequestId(id);
+		request();
+		return checkSuccess();
+	}
+
+	public int countsEntity(Map<String, Object> query) {
+		setServiceEntry(countsURL);
+		setServiceRequestQuery(query, null, null);
+		return Integer.parseInt(request().toString());
+	}
+
+	/**
+	 * 返回请求结果的JSON字符穿
+	 * 
+	 * @return
+	 */
+	public String getJSONResponse() {
+
+		return null;
+	}
+
+	public Map<String, Object> getCollection(Boolean excludeCount) {
+		return getCollection(null, excludeCount);
+	}
+
+	public Map<String, Object> getCollection() {
+		return getCollection(Boolean.valueOf(false));
+	}
+
+	public Map<String, Object> getCollection(Map<String, Object> query) {
+		return getCollection(query, Boolean.valueOf(false));
+	}
+
+	public Long getCollectionCount(Map<String, Object> query) {
+		_getCollectionRequest(query, Boolean.valueOf(false));
+
+		Object result = request();
+		if (null != result) {
+			return new Long(result.toString());
 		}
 
-		public boolean updateEntity(Object object) {
-			setServiceEntry(updateEntry);
-			setServiceRequestUpdate(object);
-			request();
-			return checkSuccess();
+		return Long.valueOf(0L);
+	}
+
+	public Map<String, Object> getCollection(Map<String, Object> query, Boolean excludeCount) {
+		_getCollectionRequest(query, excludeCount);
+
+		return requestCollectionList();
+	}
+
+	private void _getCollectionRequest(Map<String, Object> query, Boolean excludeCount) {
+		// SorterSession sorterSession = new SorterSession(null);
+		// FilterSession filterSession = new FilterSession();
+		// Filter filter = filterSession.getFilter();
+		// PagerSession pagerSession = new PagerSession();
+		// if (null == query) {
+		// query = new LinkedHashMap();
+		// }
+		//
+		// Object sort = null;
+		// if (null != sorterSession.getSorter()) {
+		// String sorterKey = sorterSession.getSorter().getKey();
+		// Integer braceIndex = Integer.valueOf(sorterKey.indexOf("["));
+		// if (braceIndex.intValue() > 0) {
+		// sorterKey = sorterKey.substring(0, braceIndex.intValue());
+		// }
+		// sort = ServiceSorterHelper.build(sorterKey,
+		// sorterSession.getSorter().getDirection());
+		// }
+		//
+		// setServiceRequestQuery(
+		// ServiceQueryHelper.and(query, filter.getQuery()), sort,
+		//
+		// ServicePaginationHelper.build(Integer.valueOf(pagerSession.getPager().getPageLimit()),
+		// Integer.valueOf(pagerSession.getPager().getCurrentPage())),
+		// excludeCount);
+	}
+
+	public Map<String, Object> requestCollectionList() {
+		Object result = _request();
+		if (null != result) {
+			return (Map) result;
+		}
+		return null;
+	}
+
+	public List<Map<String, Object>> requestList() {
+		Object result = _request();
+		if (null != result) {
+			return (List) result;
 		}
 
-		public boolean deleteEntityById(Integer id) {
-			setServiceEntry(deleteByIdEntry);
-			setServiceRequestId(id);
-			request();
-			return checkSuccess();
+		return null;
+	}
+
+	private void activateTimeOut() {
+		if (timeOut > 0) {
+			Object factory = restTemplate.getRequestFactory();
+			if ((factory instanceof SimpleClientHttpRequestFactory)) {
+				System.out.println("HttpUrlConnection is used");
+				((SimpleClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
+				((SimpleClientHttpRequestFactory) factory).setReadTimeout(timeOut);
+			} else if ((factory instanceof HttpComponentsClientHttpRequestFactory)) {
+				System.out.println("HttpClient is used");
+				((HttpComponentsClientHttpRequestFactory) factory).setReadTimeout(timeOut);
+				((HttpComponentsClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
+			}
+		}
+	}
+
+	public Object request() {
+		return _request();
+	}
+
+	public String getServiceAddress() {
+		return host;
+	}
+
+	public void setServiceAddress(String serviceAddress) {
+		this.host = serviceAddress;
+	}
+
+	public String getServiceEntry() {
+		return serviceEntry;
+	}
+
+	public void setServiceEntry(String serviceEntry) {
+		this.serviceEntry = serviceEntry;
+	}
+
+	public String getServiceRequest() {
+		return serviceRequest;
+	}
+
+	public void setServiceRequest(HashMap<String, Object> request) {
+		setServiceRequest(Json.toJson(request));
+	}
+
+	public void setServiceRequest(String serviceRequest) {
+		this.serviceRequest = serviceRequest;
+	}
+
+	public Map<String, Object> getServiceResult() {
+		return serviceResult;
+	}
+
+	public void setServiceResult(Map<String, Object> serviceResult) {
+		this.serviceResult = serviceResult;
+	}
+
+	public String getServiceToken() {
+		return token;
+	}
+
+	public void setServiceToken(String serviceToken) {
+		this.token = serviceToken;
+	}
+
+	public void setServiceRequestId(Object id) {
+		setServiceRequest(id.toString());
+	}
+
+	public void setServiceRequestQuery(Object query, Object sort, Object pagination) {
+		setServiceRequestQuery(query, sort, pagination, Boolean.valueOf(true));
+	}
+
+	public void setServiceRequestQuery(Object query, Object sort, Object pagination, Boolean excludeCount) {
+		HashMap<String, Object> request = new HashMap();
+		if (null != query) {
+			request.put("query", query);
+		}
+		if (null != sort) {
+			request.put("sort", sort);
+		}
+		if (null != pagination) {
+			request.put("pagination", pagination);
+		}
+		if (excludeCount.booleanValue()) {
+			request.put("excludeCount", "1");
 		}
 
-		public int countsEntity(Map<String, Object> query) {
-			setServiceEntry(countsEntry);
-			setServiceRequestQuery(query, null, null);
-			return Integer.parseInt(request().toString());
+		setServiceRequest(Json.toJson(request));
+	}
+
+	public void setServiceRequestQueryGroup(Object query, Object group) {
+		HashMap<String, Object> request = new HashMap();
+		if (null != query) {
+			request.put("query", query);
 		}
-   
-   protected void init(String code) {
-     Map<String, String> serviceConfig = serviceRouterConfigs.get(code);
-     
-     if (null == serviceConfig) {
-       String serviceAddressKey = "JTOMTOPERP_" + code + "_SERVICE_ADDRESS";
-       String serviceTokenKey = "JTOMTOPERP_" + code + "_SERVICE_TOKEN";
-       host = System.getenv(serviceAddressKey);
-       if (null == host)
-       {
-         ServerSettingService sss = new ServerSettingService();
-         ServerPortSetting sp = sss.fetchServerPortSettingByCode(code);
-         if (null == sp) {
-           System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^error: no server config!");
-         } else {
-           host = sp.getAddress();
-           serviceToken = sp.getToken();
-           serviceConfig = new HashMap<String, String>();
-           serviceConfig.put("ADDRESS", host);
-           serviceConfig.put("TOKEN", serviceToken);
-           serviceRouterConfigs.put(code, serviceConfig);
-         }
-       } else {
-         serviceToken = System.getenv(serviceTokenKey);
-       }
-     } else {
-       host = ((String)serviceConfig.get("ADDRESS"));
-       serviceToken = ((String)serviceConfig.get("TOKEN"));
-     }
-   }
-   
-   public Map<String, Object> getCollection(Boolean excludeCount) {
-     return getCollection(null, excludeCount);
-   }
-   
-   public Map<String, Object> getCollection() {
-     return getCollection(Boolean.valueOf(false));
-   }
-   
- 
-   public Map<String, Object> getCollection(Map<String, Object> query) { return getCollection(query, Boolean.valueOf(false)); }
-   
-   public Long getCollectionCount(Map<String, Object> query) {
-     _getCollectionRequest(query, Boolean.valueOf(false));
-     
-     Object result = request();
-     if (null != result) {
-       return new Long(result.toString());
-     }
-     
-     return Long.valueOf(0L);
-   }
-   
-   public Map<String, Object> getCollection(Map<String, Object> query, Boolean excludeCount) {
-     _getCollectionRequest(query, excludeCount);
-     
-     return requestCollectionList();
-   }
-   
-   private void _getCollectionRequest(Map<String, Object> query, Boolean excludeCount) {
-//     SorterSession sorterSession = new SorterSession(null);
-//     FilterSession filterSession = new FilterSession();
-//     Filter filter = filterSession.getFilter();
-//     PagerSession pagerSession = new PagerSession();
-//     if (null == query) {
-//       query = new LinkedHashMap();
-//     }
-//     
-//     Object sort = null;
-//     if (null != sorterSession.getSorter()) {
-//       String sorterKey = sorterSession.getSorter().getKey();
-//       Integer braceIndex = Integer.valueOf(sorterKey.indexOf("["));
-//       if (braceIndex.intValue() > 0) {
-//         sorterKey = sorterKey.substring(0, braceIndex.intValue());
-//       }
-//       sort = ServiceSorterHelper.build(sorterKey, sorterSession.getSorter().getDirection());
-//     }
-//     
-//     setServiceRequestQuery(
-//       ServiceQueryHelper.and(query, filter.getQuery()), sort, 
-//       
-//       ServicePaginationHelper.build(Integer.valueOf(pagerSession.getPager().getPageLimit()), Integer.valueOf(pagerSession.getPager().getCurrentPage())), excludeCount);
-   }
-   
- 
-   public Map<String, Object> requestCollectionList()
-   {
-     Object result = _request();
-     if (null != result) {
-       return (Map)result;
-     }
-     return null;
-   }
-   
-   public List<Map<String, Object>> requestList() {
-     Object result = _request();
-     if (null != result) {
-       return (List)result;
-     }
-     
-     return null;
-   }
-   
-   private Object _request() {
-     try {
-       String requestUrl = StringUtils.stripEnd(getServiceAddress(), "/") + StringUtils.stripEnd(getServiceEntry(), "/") + "?token=" + getServiceToken();
-       if (null == getServiceRequest()) {
-         setServiceRequest("{}");
-       }
-       System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion " + StringUtils.stripEnd(getServiceAddress(), "/") + StringUtils.stripEnd(getServiceEntry(), "/"));
-       System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion " + getServiceRequest());
-       
-       MultiValueMap<String, Object> headers = new LinkedMultiValueMap();
-       headers.add("Accept", "application/json;charset=utf-8");
-       headers.add("Content-Type", "application/json;charset=utf-8");
-       String requestBody = getServiceRequest();
-       HttpEntity httpEntity = new HttpEntity(requestBody, headers);
-       
-       serviceResult = ((Map)restTemplate.postForObject(requestUrl, httpEntity, LinkedHashMap.class, new Object[0]));
-       
-       activateTimeOut();
-       
-       if (!serviceResult.containsKey("code")) {
-         serviceResult.put("code", ResponseStatus.ERROR.getCode());
-         return null;
-       }
-       
-       if (null != serviceResult.get("result")) {
-         return serviceResult.get("result");
-       }
-     } catch (Exception e) {
-    	 serviceResult.put("code", ResponseStatus.ERROR.getCode());
-    	 e.printStackTrace();
-     }
-     
-     return null;
-   }
-   
-   private void activateTimeOut() {
-     if (timeOut > 0) {
-       Object factory = restTemplate.getRequestFactory();
-       if ((factory instanceof SimpleClientHttpRequestFactory)) {
-         System.out.println("HttpUrlConnection is used");
-         ((SimpleClientHttpRequestFactory)factory).setConnectTimeout(timeOut);
-         ((SimpleClientHttpRequestFactory)factory).setReadTimeout(timeOut);
-       } else if ((factory instanceof HttpComponentsClientHttpRequestFactory)) {
-         System.out.println("HttpClient is used");
-         ((HttpComponentsClientHttpRequestFactory)factory).setReadTimeout(timeOut);
-         ((HttpComponentsClientHttpRequestFactory)factory).setConnectTimeout(timeOut);
-       }
-     }
-   }
-   
-   public Object request() {
-     return _request();
-   }
-   
-   public String getServiceAddress() {
-     return host;
-   }
-   
-   public void setServiceAddress(String serviceAddress) {
-     this.host = serviceAddress;
-   }
-   
-   public String getServiceEntry() {
-     return serviceEntry;
-   }
-   
-   public void setServiceEntry(String serviceEntry) {
-     this.serviceEntry = serviceEntry;
-   }
-   
-   public String getServiceRequest() {
-     return serviceRequest;
-   }
-   
-   public void setServiceRequest(HashMap<String, Object> request) {
-     setServiceRequest(Json.toJson(request));
-   }
-   
-   public void setServiceRequest(String serviceRequest) {
-     this.serviceRequest = serviceRequest;
-   }
-   
-   public Map<String, Object> getServiceResult() {
-     return serviceResult;
-   }
-   
-   public void setServiceResult(Map<String, Object> serviceResult) {
-     this.serviceResult = serviceResult;
-   }
-   
-   public String getServiceToken() {
-     return serviceToken;
-   }
-   
-   public void setServiceToken(String serviceToken) {
-     this.serviceToken = serviceToken;
-   }
-   
-   public void setServiceRequestId(Object id) {
-     setServiceRequest(id.toString());
-   }
-   
-   public void setServiceRequestQuery(Object query, Object sort, Object pagination) {
-     setServiceRequestQuery(query, sort, pagination, Boolean.valueOf(true));
-   }
-   
-   public void setServiceRequestQuery(Object query, Object sort, Object pagination, Boolean excludeCount) {
-     HashMap<String, Object> request = new HashMap();
-     if (null != query) {
-       request.put("query", query);
-     }
-     if (null != sort) {
-       request.put("sort", sort);
-     }
-     if (null != pagination) {
-       request.put("pagination", pagination);
-     }
-     if (excludeCount.booleanValue()) {
-       request.put("excludeCount", "1");
-     }
-     
-     setServiceRequest(Json.toJson(request));
-   }
-   
-   public void setServiceRequestQueryGroup(Object query, Object group) {
-     HashMap<String, Object> request = new HashMap();
-     if (null != query) {
-       request.put("query", query);
-     }
-     
-     request.put("group", group);
-     
-     setServiceRequest(Json.toJson(request));
-   }
-   
-   public String setServiceRequestBatchUpdate(Object object) {
-     if ((object instanceof String)) {
-       setServiceRequest((String)object);
-     } else if ((object instanceof List)) {
-       Map<String, Object> request = new HashMap();
-       request.put("updates", object);
-       setServiceRequest(Json.toJson(request));
-     } else {
-       HashMap<String, Object> request = new HashMap();
-       Map<String, Object> updates = new HashMap();
-       if ((object instanceof Map)) {
-         updates = (Map)object;
-       } else {
-         updates = (Map)Json.fromJson(Json.toJson(object), Map.class);
-       }
-       request.put("ids", updates.get("ids"));
-       request.put("updates", updates);
-       setServiceRequest(Json.toJson(request));
-     }
-     
-     return getServiceRequest();
-   }
-   
-   public String setServiceRequestUpdate(Object object) {
-     if ((object instanceof String)) {
-       setServiceRequest((String)object);
-     } else {
-       HashMap<String, Object> request = new HashMap();
-       Map<String, Object> updates = new HashMap();
-       if ((object instanceof Map)) {
-         updates = (Map)object;
-       } else {
-         updates = (Map)Json.fromJson(Json.toJson(object), Map.class);
-       }
-       request.put("id", updates.get("id"));
-       request.put("updates", updates);
-       setServiceRequest(Json.toJson(request));
-     }
-     
-     return getServiceRequest();
-   }
-   
-   public String setServiceRequestCreateBatch(Object object) {
-     if ((object instanceof String)) {
-       setServiceRequest((String)object);
-     } else {
-       setServiceRequest(Json.toJson(object));
-     }
-     
-     return getServiceRequest();
-   }
-   
-   public String setServiceRequestCreate(Object object) {
-     Map<String, Object> request = new HashMap();
-     if ((object instanceof Map)) {
-       request = (Map)object;
-     } else {
-       request = (Map)Json.fromJson(Json.toJson(object), Map.class);
-     }
-     setServiceRequest(Json.toJson(request));
-     
-     return getServiceRequest();
-   }
-   
-   public Boolean checkSuccess() {
-     if ((null != serviceResult) && (null != serviceResult.get("code")) && (
-       (ResponseStatus.SUCCESS.getCode().equals(serviceResult.get("code"))) || ((ResponseStatus.ERROR.equals(serviceResult.get("code"))) && (null != serviceResult.get("result"))))) {
-       return Boolean.valueOf(true);
-     }
-     
-     return Boolean.valueOf(false);
-   }
-   
-   public int getTimeOut() {
-     return timeOut;
-   }
-   
-   public void setTimeOut(int timeOut) {
-     this.timeOut = timeOut;
-   }
-   
-   /**
+
+		request.put("group", group);
+
+		setServiceRequest(Json.toJson(request));
+	}
+
+	public String setServiceRequestBatchUpdate(Object object) {
+		if ((object instanceof String)) {
+			setServiceRequest((String) object);
+		} else if ((object instanceof List)) {
+			Map<String, Object> request = new HashMap();
+			request.put("updates", object);
+			setServiceRequest(Json.toJson(request));
+		} else {
+			HashMap<String, Object> request = new HashMap();
+			Map<String, Object> updates = new HashMap();
+			if ((object instanceof Map)) {
+				updates = (Map) object;
+			} else {
+				updates = (Map) Json.fromJson(Json.toJson(object), Map.class);
+			}
+			request.put("ids", updates.get("ids"));
+			request.put("updates", updates);
+			setServiceRequest(Json.toJson(request));
+		}
+
+		return getServiceRequest();
+	}
+
+	public String setServiceRequestUpdate(Object object) {
+		if ((object instanceof String)) {
+			setServiceRequest((String) object);
+		} else {
+			HashMap<String, Object> request = new HashMap();
+			Map<String, Object> updates = new HashMap();
+			if ((object instanceof Map)) {
+				updates = (Map) object;
+			} else {
+				updates = (Map) Json.fromJson(Json.toJson(object), Map.class);
+			}
+			request.put("id", updates.get("id"));
+			request.put("updates", updates);
+			setServiceRequest(Json.toJson(request));
+		}
+
+		return getServiceRequest();
+	}
+
+	public String setServiceRequestCreateBatch(Object object) {
+		if ((object instanceof String)) {
+			setServiceRequest((String) object);
+		} else {
+			setServiceRequest(Json.toJson(object));
+		}
+
+		return getServiceRequest();
+	}
+
+	public String setServiceRequestCreate(Object object) {
+		Map<String, Object> request = new HashMap();
+		if ((object instanceof Map)) {
+			request = (Map) object;
+		} else {
+			request = (Map) Json.fromJson(Json.toJson(object), Map.class);
+		}
+		setServiceRequest(Json.toJson(request));
+
+		return getServiceRequest();
+	}
+
+	public Boolean checkSuccess() {
+		if ((null != serviceResult) && (null != serviceResult.get("code"))
+				&& ((ResponseStatus.SUCCESS.getCode().equals(serviceResult.get("code"))) || ((ResponseStatus.ERROR.equals(serviceResult.get("code"))) && (null != serviceResult.get("result"))))) {
+			return Boolean.valueOf(true);
+		}
+
+		return Boolean.valueOf(false);
+	}
+
+	public int getTimeOut() {
+		return timeOut;
+	}
+
+	public void setTimeOut(int timeOut) {
+		this.timeOut = timeOut;
+	}
+
+	/**
 	 * 若无法满足实体映射可以被覆盖，提供自己的实现
 	 * 
 	 * @param clazz
@@ -576,8 +602,7 @@ import eyihcn.utils.ServiceQueryHelper;
 				}
 				// 若为自定义的orm // com.tomtop.application.orm
 				if (isSelfDesignOrm(fieldClazz, ormPackageNames)) {
-					BeanUtils.setProperty(entity, fieldName,
-							_mapToEntity(fieldClazz, (Map<String, Object>) properties.get(fieldName), ormPackageNames));
+					BeanUtils.setProperty(entity, fieldName, _mapToEntity(fieldClazz, (Map<String, Object>) properties.get(fieldName), ormPackageNames));
 					continue;
 				}
 				BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
@@ -606,5 +631,4 @@ import eyihcn.utils.ServiceQueryHelper;
 		}
 		return Arrays.asList(ormPackageNames).contains(clazz.getPackage().getName());
 	}
- }
-
+}
