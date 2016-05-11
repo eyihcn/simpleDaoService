@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +16,8 @@ import java.util.Map;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -25,6 +26,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import service.ResponseStatus;
+import service.ServiceResponse;
 import entity.BaseEntity;
 import eyihcn.utils.GenericsUtils;
 import eyihcn.utils.Json;
@@ -42,6 +44,8 @@ import eyihcn.utils.ServiceQueryHelper;
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Serializable> {
 
+	final Logger log = LoggerFactory.getLogger(DaoServiceClient.class);
+	
 	private RestTemplate restTemplate = new RestTemplate();
 	private static Map<String, Map<String, String>> serviceRouterConfigs = new HashMap<String, Map<String, String>>();
 
@@ -73,7 +77,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private String token; // 令牌
 	private String serviceEntry; 
 	private String serviceRequest;
-	private Map<String, Object> serviceResult = new HashMap<String, Object>();
+	private Map<String, Object> serviceResponseMap = new HashMap<String, Object>(); // 响应结果
+	private ServiceResponse serviceResponse; // 响应结果
+	private String responseJson ; // 响应结果的json字符串
 	private int timeOut = -1;
 	
 	private String requestUrl;
@@ -153,44 +159,47 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		this.findCollectionURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + FIND_COLLECTION;
 	}
 
-	public Object request(String requsetURL) {
+	/**
+	 * headers支持 json格式
+	 * @param responseType 返回结果类型
+	 * @param requsetURL 请求URL
+	 * @param jsonParam json请求参数字符串
+	 * @return
+	 */
+	public <E> E request(Class<E> responseType,String requsetURL,String jsonParam) {
 		
-		return null;
-	}
-	
-	
-	private Object _request() {
+		E response = null;
+		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requsetURL).toString());
+		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion " ).append(jsonParam).toString());
 		try {
-			String requestUrl = StringUtils.stripEnd(getServiceAddress(), "/") + StringUtils.stripEnd(getServiceEntry(), "/") + "?token=" + getServiceToken();
-			if (null == getServiceRequest()) {
-				setServiceRequest("{}");
-			}
-			System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion " + StringUtils.stripEnd(getServiceAddress(), "/") + StringUtils.stripEnd(getServiceEntry(), "/"));
-			System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion " + getServiceRequest());
-
 			MultiValueMap<String, Object> headers = new LinkedMultiValueMap();
 			headers.add("Accept", "application/json;charset=utf-8");
 			headers.add("Content-Type", "application/json;charset=utf-8");
-			String requestBody = getServiceRequest();
-			HttpEntity httpEntity = new HttpEntity(requestBody, headers);
-
-			serviceResult = ((Map) restTemplate.postForObject(requestUrl, httpEntity, LinkedHashMap.class, new Object[0]));
-
+			HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
+			response = restTemplate.postForObject(requsetURL, httpEntity,responseType , new Object[0]);
 			activateTimeOut();
-
-			if (!serviceResult.containsKey("code")) {
-				serviceResult.put("code", ResponseStatus.ERROR.getCode());
-				return null;
-			}
-
-			if (null != serviceResult.get("result")) {
-				return serviceResult.get("result");
-			}
 		} catch (Exception e) {
-			serviceResult.put("code", ResponseStatus.ERROR.getCode());
 			e.printStackTrace();
 		}
+		return response;
+	}
+	
+	
+	private Object _requestForResult() {
+		try {
+//			String requestUrl = StringUtils.stripEnd(getServiceAddress(), "/") + StringUtils.stripEnd(getServiceEntry(), "/") + "?token=" + getServiceToken();
 
+			String jsonParam = getServiceRequest();
+			jsonParam = jsonParam== null?"{}":jsonParam;
+			serviceResponse = request(ServiceResponse.class, requestUrl, jsonParam);
+			if (serviceResponse == null) {
+				serviceResponse = new ServiceResponse(ResponseStatus.ERROR.getCode(), ResponseStatus.ERROR.getDescription());
+				return null;
+			}
+			return serviceResponse.getResult();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
 	
@@ -403,11 +412,11 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public Map<String, Object> getServiceResult() {
-		return serviceResult;
+		return serviceResponseMap;
 	}
 
 	public void setServiceResult(Map<String, Object> serviceResult) {
-		this.serviceResult = serviceResult;
+		this.serviceResponseMap = serviceResult;
 	}
 
 	public String getServiceToken() {
@@ -520,8 +529,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public Boolean checkSuccess() {
-		if ((null != serviceResult) && (null != serviceResult.get("code"))
-				&& ((ResponseStatus.SUCCESS.getCode().equals(serviceResult.get("code"))) || ((ResponseStatus.ERROR.equals(serviceResult.get("code"))) && (null != serviceResult.get("result"))))) {
+		if ((null != serviceResponseMap) && (null != serviceResponseMap.get("code"))
+				&& ((ResponseStatus.SUCCESS.getCode().equals(serviceResponseMap.get("code"))) || ((ResponseStatus.ERROR.equals(serviceResponseMap.get("code"))) && (null != serviceResponseMap.get("result"))))) {
 			return Boolean.valueOf(true);
 		}
 
