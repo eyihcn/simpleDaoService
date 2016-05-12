@@ -10,7 +10,13 @@ public class ServiceResponse {
 	public ServiceResponse() {
 		super();
 	}
-
+	
+	public ServiceResponse(ResponseStatus responseStatus) {
+		super();
+		this.code = responseStatus.getCode();
+		this.description = responseStatus.getDescription();
+	}
+	
 	public ServiceResponse(Integer code, String description) {
 		super();
 		this.code = code;

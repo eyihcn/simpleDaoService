@@ -60,17 +60,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	protected static final String COLLECTION_COUNT = "collectionCount";
 	protected static final String SEPARATOR = "/";
 
-	private String serviceTokenCode;
 	private String modelName;
 	private Class<T> entityClass;
 	private String entityClassName; // simpleName
-	private String saveURL;
-	private String updateURL;
-	private String findOneURL;
-	private String deleteByIdURL;
-	private String findListURL;
-	private String countsURL;
-	private String findCollectionURL;
 	private String[] ormPackageNames;
 
 	private String host; // 主机
@@ -78,11 +70,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private String serviceEntry; 
 	private String serviceRequest;
 	private Map<String, Object> serviceResponseMap = new HashMap<String, Object>(); // 响应结果
-	private ServiceResponse serviceResponse; // 响应结果
-	private String responseJson ; // 响应结果的json字符串
+	private ServiceResponse serviceResponse; // 响应结果 daoService的响应协议格式
+//	private String responseJson ; // 响应结果的json字符串
 	private int timeOut = -1;
-	
-	private String requestUrl;
 
 	public DaoServiceClient() {
 		ModelCode modelCode = this.getClass().getAnnotation(ModelCode.class);
@@ -94,18 +84,17 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		if (StringUtils.isBlank(serviceCode) || StringUtils.isBlank(modelName)) {
 			throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
 		}
-		this.serviceTokenCode = serviceCode;
+//		this.serviceTokenCode = serviceCode;
+		initRquestHostAndToken(serviceCode);
 		this.modelName = modelName;
-		// init(serviceTokenCode);
 		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
 		this.entityClassName = this.entityClass.getSimpleName();
-		initCrudServiceEntry();
 	}
 
 	/**
 	 * 初始化请求的Host和Token
 	 */
-	protected void initRquestHostAndToken() {
+	protected void initRquestHostAndToken(String serviceTokenCode) {
 		String serviceAddressKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_ADDRESS";
 		String serviceTokenKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_TOKEN";
 		// 1. 先从缓存取host 和 token
@@ -149,16 +138,13 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	/**
 	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
 	 */
-	private void initCrudServiceEntry() {
-		this.saveURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + SAVE;
-		this.updateURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + UPDATE;
-		this.findOneURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + FIND_ONE;
-		this.deleteByIdURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + DELETE_BY_ID;
-		this.findListURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + FIND_LIST;
-		this.countsURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + COUNTS;
-		this.findCollectionURL = SEPARATOR + modelName + SEPARATOR + entityClassName + SEPARATOR + FIND_COLLECTION;
+	private void initServiceEntry(String methodName) {
+		if (StringUtils.isBlank(methodName)) {
+			throw new IllegalArgumentException("methodName cannot be null !!!");
+		}
+		this.serviceEntry = new StringBuilder(SEPARATOR).append(modelName ).append( SEPARATOR ).append( entityClassName ).append( SEPARATOR ).append(methodName).toString();
 	}
-
+	
 	/**
 	 * headers支持 json格式
 	 * @param responseType 返回结果类型
@@ -170,7 +156,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		
 		E response = null;
 		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requsetURL).toString());
-		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion " ).append(jsonParam).toString());
+		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(jsonParam).toString());
 		try {
 			MultiValueMap<String, Object> headers = new LinkedMultiValueMap();
 			headers.add("Accept", "application/json;charset=utf-8");
@@ -184,16 +170,11 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return response;
 	}
 	
-	
-	private Object _requestForResult() {
+	private Object requestForResult() {
 		try {
-//			String requestUrl = StringUtils.stripEnd(getServiceAddress(), "/") + StringUtils.stripEnd(getServiceEntry(), "/") + "?token=" + getServiceToken();
-
-			String jsonParam = getServiceRequest();
-			jsonParam = jsonParam== null?"{}":jsonParam;
-			serviceResponse = request(ServiceResponse.class, requestUrl, jsonParam);
+			serviceResponse = request(ServiceResponse.class, buildRequestURL(), this.serviceRequest==null?"{}":this.serviceRequest);
 			if (serviceResponse == null) {
-				serviceResponse = new ServiceResponse(ResponseStatus.ERROR.getCode(), ResponseStatus.ERROR.getDescription());
+				serviceResponse = new ServiceResponse(ResponseStatus.ERROR);
 				return null;
 			}
 			return serviceResponse.getResult();
@@ -203,12 +184,40 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return null;
 	}
 	
+	/**
+	 * 返回请求结果的JSON字符穿
+	 * 
+	 * @return
+	 */
+	public String getJSONResponse() {
+		return request(String.class, buildRequestURL(), this.serviceRequest==null?"{}":this.serviceRequest);
+	}
+	
+	/**
+	 * 返回请求结果的Map
+	 * 
+	 * @return
+	 */
+	public Map<String,Object> getMapResponse() {
+		return request(Map.class, buildRequestURL(), this.serviceRequest==null?"{}":this.serviceRequest);
+	}
+	
+	/**
+	 * serviceAdderss[ip:port] + serviceEntry[/模块名/实体名/方法] + ? +serviceToken=[token]
+	 * @return
+	 */
+	private  String buildRequestURL() {
+		return new StringBuilder(StringUtils.stripEnd(getServiceAddress(), "/"))
+		.append( StringUtils.stripEnd(getServiceEntry(), "/"))
+		.append("?token=" + getServiceToken()).toString();
+	}
+	
 	public Map<String, Object> findEntityCollection() {
 		return findEntityCollection(null);
 	}
 
 	public Map<String, Object> findEntityCollection(Map<String, Object> query) {
-		setServiceEntry(findCollectionURL);
+		initServiceEntry(FIND_COLLECTION);
 		Map<String, Object> map = null;
 		if (MapUtils.isEmpty(query)) {
 			map = getCollection();
@@ -226,7 +235,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public List<T> findEntityList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
-		setServiceEntry(findListURL);
+		initServiceEntry(FIND_LIST);
 		setServiceRequestQuery(query, sort, pagination);
 		List<Map<String, Object>> result = requestList();
 		List<T> entityList = new LinkedList<T>();
@@ -239,7 +248,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public T findEntity(Map<String, Object> request) {
-		setServiceEntry(findOneURL);
+		initServiceEntry(FIND_ONE);
 		setServiceRequestQuery(request, null, null);
 		return _mapToEntity(entityClass, (Map<String, Object>) request(), ormPackageNames);
 	}
@@ -254,40 +263,30 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public boolean createEntity(Object object) {
-		setServiceEntry(saveURL);
+		initServiceEntry(SAVE);
 		setServiceRequestCreate(object);
 		request();
 		return checkSuccess();
 	}
 
 	public boolean updateEntity(Object object) {
-		setServiceEntry(updateURL);
+		initServiceEntry(UPDATE);
 		setServiceRequestUpdate(object);
 		request();
 		return checkSuccess();
 	}
 
 	public boolean deleteEntityById(Integer id) {
-		setServiceEntry(deleteByIdURL);
+		initServiceEntry(DELETE_BY_ID);
 		setServiceRequestId(id);
 		request();
 		return checkSuccess();
 	}
 
 	public int countsEntity(Map<String, Object> query) {
-		setServiceEntry(countsURL);
+		initServiceEntry(COUNTS);
 		setServiceRequestQuery(query, null, null);
 		return Integer.parseInt(request().toString());
-	}
-
-	/**
-	 * 返回请求结果的JSON字符穿
-	 * 
-	 * @return
-	 */
-	public String getJSONResponse() {
-
-		return null;
 	}
 
 	public Map<String, Object> getCollection(Boolean excludeCount) {
