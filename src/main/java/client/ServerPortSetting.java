@@ -1,6 +1,10 @@
 package client;
 
-public class ServerPortSetting {
+import entity.BaseEntity;
+
+public class ServerPortSetting extends BaseEntity<Integer>{
+	private static final long serialVersionUID = -7795852781867563704L;
+	
 	private Integer id;
 	private String code;
 	private String address;

@@ -124,8 +124,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			return ;
 		}
 		// 3. 若系统变量中没有，查询数据库配置
-		ServerSettingService sss = new ServerSettingService();
-		ServerPortSetting sp = sss.fetchServerPortSettingByCode(serviceTokenCode);
+		ServerPortSetting sp =	new ServerSettingService().fetchServerPortSettingByCode(serviceTokenCode);
 		if (null == sp) {
 			throw new RuntimeException("no server config! serviceTokenCode=[" +serviceTokenCode+"]");
 		}
@@ -173,7 +172,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return response;
 	}
 	
-	private Object requestForResult() {
+	protected Object requestForResult() {
 		try {
 			serviceResponse = request(ServiceResponse.class, buildRequestURL(), this.requestParam==null?"{}":this.requestParam);
 			if (serviceResponse == null) {
