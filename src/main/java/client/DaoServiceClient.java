@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -68,27 +67,41 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private String host; // 主机
 	private String token; // 令牌
 	private String serviceEntry; 
-	private String serviceRequest;
+	private String requestParam;
 	private Map<String, Object> serviceResponseMap = new HashMap<String, Object>(); // 响应结果
 	private ServiceResponse serviceResponse; // 响应结果 daoService的响应协议格式
-//	private String responseJson ; // 响应结果的json字符串
+	private String responseJson ; // 响应结果的json字符串
 	private int timeOut = -1;
+	private ModelCode modelCode;
 
 	public DaoServiceClient() {
-		ModelCode modelCode = this.getClass().getAnnotation(ModelCode.class);
+		this.modelCode = this.getClass().getAnnotation(ModelCode.class);
+		initRquestHostAndToken(initServiceCode());
+		this.modelName =  initModelName();
+		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
+		this.entityClassName = this.entityClass.getSimpleName();
+	}
+	
+	/**
+	 * 通过注解指定serviceCode的方式可以被覆盖，自定义 
+	 * @return
+	 */
+	protected String initServiceCode() {
 		if (null == modelCode) {
 			throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
 		}
-		String serviceCode = modelCode.serviceCode();
-		String modelName = modelCode.modelName();
-		if (StringUtils.isBlank(serviceCode) || StringUtils.isBlank(modelName)) {
-			throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
+		return modelCode.serviceCode();
+	}
+	
+	/**
+	 * 通过注解指定modelName的方式可以被覆盖，自定义 
+	 * @return
+	 */
+	protected String initModelName() {
+		if (null == modelCode) {
+			return "";
 		}
-//		this.serviceTokenCode = serviceCode;
-		initRquestHostAndToken(serviceCode);
-		this.modelName = modelName;
-		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
-		this.entityClassName = this.entityClass.getSimpleName();
+		return modelCode.modelName();
 	}
 
 	/**
@@ -123,16 +136,6 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		serviceConfig.put("ADDRESS", host);
 		serviceConfig.put("TOKEN", token);
 		serviceRouterConfigs.put(serviceTokenCode, serviceConfig);
-	}
-
-	/**
-	 * 提供默认实现，也可以被覆盖，提高orm的所有包名
-	 * 
-	 * @return
-	 */
-	public String[] prepareOrmPackageNames() {
-		String[] names = { "" };
-		return names;
 	}
 
 	/**
@@ -172,7 +175,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	
 	private Object requestForResult() {
 		try {
-			serviceResponse = request(ServiceResponse.class, buildRequestURL(), this.serviceRequest==null?"{}":this.serviceRequest);
+			serviceResponse = request(ServiceResponse.class, buildRequestURL(), this.requestParam==null?"{}":this.requestParam);
 			if (serviceResponse == null) {
 				serviceResponse = new ServiceResponse(ResponseStatus.ERROR);
 				return null;
@@ -190,7 +193,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @return
 	 */
 	public String getJSONResponse() {
-		return request(String.class, buildRequestURL(), this.serviceRequest==null?"{}":this.serviceRequest);
+		responseJson = request(String.class, buildRequestURL(), this.requestParam==null?"{}":this.requestParam);
+		return responseJson;
 	}
 	
 	/**
@@ -199,7 +203,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @return
 	 */
 	public Map<String,Object> getMapResponse() {
-		return request(Map.class, buildRequestURL(), this.serviceRequest==null?"{}":this.serviceRequest);
+		serviceResponseMap = request(Map.class, buildRequestURL(), this.requestParam==null?"{}":this.requestParam);
+		return serviceResponseMap;
 	}
 	
 	/**
@@ -207,9 +212,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @return
 	 */
 	private  String buildRequestURL() {
-		return new StringBuilder(StringUtils.stripEnd(getServiceAddress(), "/"))
-		.append( StringUtils.stripEnd(getServiceEntry(), "/"))
-		.append("?token=" + getServiceToken()).toString();
+		return new StringBuilder(StringUtils.stripEnd(getServiceAddress(), "/")).append( StringUtils.stripEnd(getServiceEntry(), "/")).append("?token=" + getServiceToken()).toString();
 	}
 	
 	public Map<String, Object> findEntityCollection() {
@@ -217,6 +220,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public Map<String, Object> findEntityCollection(Map<String, Object> query) {
+		
 		initServiceEntry(FIND_COLLECTION);
 		Map<String, Object> map = null;
 		if (MapUtils.isEmpty(query)) {
@@ -224,33 +228,21 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		} else {
 			map = getCollection(query);
 		}
-		List<T> entityCol = new ArrayList<T>();
-		if (null != map) {
-			for (Map<String, Object> o : (List<Map<String, Object>>) map.get(COLLECTION)) {
-				entityCol.add(_mapToEntity(entityClass, o, ormPackageNames));
-			}
-			map.put(COLLECTION, entityCol);
-		}
 		return map;
 	}
 
 	public List<T> findEntityList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
+		
 		initServiceEntry(FIND_LIST);
 		setServiceRequestQuery(query, sort, pagination);
-		List<Map<String, Object>> result = requestList();
-		List<T> entityList = new LinkedList<T>();
-		if (null != result) {
-			for (Map<String, Object> data : result) {
-				entityList.add(_mapToEntity(entityClass, data, ormPackageNames));
-			}
-		}
-		return entityList;
+		return (List<T>)requestForResult();
 	}
 
 	public T findEntity(Map<String, Object> request) {
+		
 		initServiceEntry(FIND_ONE);
 		setServiceRequestQuery(request, null, null);
-		return _mapToEntity(entityClass, (Map<String, Object>) request(), ormPackageNames);
+		return (T)requestForResult();
 	}
 
 	public T findEntityById(Integer id) {
@@ -265,28 +257,28 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public boolean createEntity(Object object) {
 		initServiceEntry(SAVE);
 		setServiceRequestCreate(object);
-		request();
+		getMapResponse();
 		return checkSuccess();
 	}
 
 	public boolean updateEntity(Object object) {
 		initServiceEntry(UPDATE);
 		setServiceRequestUpdate(object);
-		request();
+		getMapResponse();
 		return checkSuccess();
 	}
 
 	public boolean deleteEntityById(Integer id) {
 		initServiceEntry(DELETE_BY_ID);
-		setServiceRequestId(id);
-		request();
+		setServiceEntry(id.toString());
+		getMapResponse();
 		return checkSuccess();
 	}
 
 	public int countsEntity(Map<String, Object> query) {
 		initServiceEntry(COUNTS);
 		setServiceRequestQuery(query, null, null);
-		return Integer.parseInt(request().toString());
+		return Integer.parseInt(requestForResult().toString());
 	}
 
 	public Map<String, Object> getCollection(Boolean excludeCount) {
@@ -301,66 +293,18 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return getCollection(query, Boolean.valueOf(false));
 	}
 
-	public Long getCollectionCount(Map<String, Object> query) {
-		_getCollectionRequest(query, Boolean.valueOf(false));
-
-		Object result = request();
-		if (null != result) {
-			return new Long(result.toString());
-		}
-
-		return Long.valueOf(0L);
-	}
-
 	public Map<String, Object> getCollection(Map<String, Object> query, Boolean excludeCount) {
 		_getCollectionRequest(query, excludeCount);
-
-		return requestCollectionList();
+		return (Map<String, Object>) requestForResult();
 	}
 
+	/**
+	 * 获取每个用户中Session中的查询条件
+	 * @param query
+	 * @param excludeCount
+	 */
 	private void _getCollectionRequest(Map<String, Object> query, Boolean excludeCount) {
-		// SorterSession sorterSession = new SorterSession(null);
-		// FilterSession filterSession = new FilterSession();
-		// Filter filter = filterSession.getFilter();
-		// PagerSession pagerSession = new PagerSession();
-		// if (null == query) {
-		// query = new LinkedHashMap();
-		// }
-		//
-		// Object sort = null;
-		// if (null != sorterSession.getSorter()) {
-		// String sorterKey = sorterSession.getSorter().getKey();
-		// Integer braceIndex = Integer.valueOf(sorterKey.indexOf("["));
-		// if (braceIndex.intValue() > 0) {
-		// sorterKey = sorterKey.substring(0, braceIndex.intValue());
-		// }
-		// sort = ServiceSorterHelper.build(sorterKey,
-		// sorterSession.getSorter().getDirection());
-		// }
-		//
-		// setServiceRequestQuery(
-		// ServiceQueryHelper.and(query, filter.getQuery()), sort,
-		//
-		// ServicePaginationHelper.build(Integer.valueOf(pagerSession.getPager().getPageLimit()),
-		// Integer.valueOf(pagerSession.getPager().getCurrentPage())),
-		// excludeCount);
-	}
-
-	public Map<String, Object> requestCollectionList() {
-		Object result = _request();
-		if (null != result) {
-			return (Map) result;
-		}
-		return null;
-	}
-
-	public List<Map<String, Object>> requestList() {
-		Object result = _request();
-		if (null != result) {
-			return (List) result;
-		}
-
-		return null;
+		setRequestParam(query);
 	}
 
 	private void activateTimeOut() {
@@ -378,9 +322,6 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		}
 	}
 
-	public Object request() {
-		return _request();
-	}
 
 	public String getServiceAddress() {
 		return host;
@@ -398,16 +339,16 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		this.serviceEntry = serviceEntry;
 	}
 
-	public String getServiceRequest() {
-		return serviceRequest;
+	public String getRequestParam() {
+		return requestParam;
 	}
 
-	public void setServiceRequest(HashMap<String, Object> request) {
-		setServiceRequest(Json.toJson(request));
+	public void setRequestParam(String requestParam) {
+		this.requestParam = requestParam;
 	}
-
-	public void setServiceRequest(String serviceRequest) {
-		this.serviceRequest = serviceRequest;
+	
+	public void setRequestParam(Map<String,Object> mapParam) {
+		setRequestParam(Json.toJson(mapParam));
 	}
 
 	public Map<String, Object> getServiceResult() {
@@ -427,13 +368,20 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public void setServiceRequestId(Object id) {
-		setServiceRequest(id.toString());
+		setRequestParam(id.toString());
 	}
 
 	public void setServiceRequestQuery(Object query, Object sort, Object pagination) {
 		setServiceRequestQuery(query, sort, pagination, Boolean.valueOf(true));
 	}
 
+	/**
+	 * 将map中的查询条件转换为json字符串，作为请求的参数
+	 * @param query
+	 * @param sort
+	 * @param pagination
+	 * @param excludeCount
+	 */
 	public void setServiceRequestQuery(Object query, Object sort, Object pagination, Boolean excludeCount) {
 		HashMap<String, Object> request = new HashMap();
 		if (null != query) {
@@ -449,7 +397,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			request.put("excludeCount", "1");
 		}
 
-		setServiceRequest(Json.toJson(request));
+		setRequestParam(Json.toJson(request));
 	}
 
 	public void setServiceRequestQueryGroup(Object query, Object group) {
@@ -460,16 +408,16 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 
 		request.put("group", group);
 
-		setServiceRequest(Json.toJson(request));
+		setRequestParam(Json.toJson(request));
 	}
 
-	public String setServiceRequestBatchUpdate(Object object) {
+	public String setRequestParamBatchUpdate(Object object) {
 		if ((object instanceof String)) {
-			setServiceRequest((String) object);
+			setRequestParam((String) object);
 		} else if ((object instanceof List)) {
 			Map<String, Object> request = new HashMap();
 			request.put("updates", object);
-			setServiceRequest(Json.toJson(request));
+			setRequestParam(Json.toJson(request));
 		} else {
 			HashMap<String, Object> request = new HashMap();
 			Map<String, Object> updates = new HashMap();
@@ -480,15 +428,15 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			}
 			request.put("ids", updates.get("ids"));
 			request.put("updates", updates);
-			setServiceRequest(Json.toJson(request));
+			setRequestParam(Json.toJson(request));
 		}
 
-		return getServiceRequest();
+		return getRequestParam();
 	}
 
 	public String setServiceRequestUpdate(Object object) {
 		if ((object instanceof String)) {
-			setServiceRequest((String) object);
+			setRequestParam((String) object);
 		} else {
 			HashMap<String, Object> request = new HashMap();
 			Map<String, Object> updates = new HashMap();
@@ -499,20 +447,20 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			}
 			request.put("id", updates.get("id"));
 			request.put("updates", updates);
-			setServiceRequest(Json.toJson(request));
+			setRequestParam(Json.toJson(request));
 		}
 
-		return getServiceRequest();
+		return getRequestParam();
 	}
 
 	public String setServiceRequestCreateBatch(Object object) {
 		if ((object instanceof String)) {
-			setServiceRequest((String) object);
+			setRequestParam((String) object);
 		} else {
-			setServiceRequest(Json.toJson(object));
+			setRequestParam(Json.toJson(object));
 		}
 
-		return getServiceRequest();
+		return getRequestParam();
 	}
 
 	public String setServiceRequestCreate(Object object) {
@@ -522,9 +470,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		} else {
 			request = (Map) Json.fromJson(Json.toJson(object), Map.class);
 		}
-		setServiceRequest(Json.toJson(request));
+		setRequestParam(Json.toJson(request));
 
-		return getServiceRequest();
+		return getRequestParam();
 	}
 
 	public Boolean checkSuccess() {
@@ -621,6 +569,17 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		}
 		return entity;
 	}
+	
+	/**
+	 * 提供默认实现，也可以被覆盖，提高orm的所有包名
+	 * 
+	 * @return
+	 */
+	protected String[] prepareOrmPackageNames() {
+		String[] names = { "" };
+		return names;
+	}
+
 
 	/**
 	 * 先判断包名是否以系统自定义的orm包的前缀，若是直接返回true， 否则在判断是否包含在自己提供的orm包名内
