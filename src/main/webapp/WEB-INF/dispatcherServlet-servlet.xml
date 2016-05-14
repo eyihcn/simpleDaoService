@@ -11,8 +11,7 @@
     http://www.springframework.org/schema/beans/spring-beans-4.0.xsd">
 
 	<!-- 配置自定扫描的包 -->
-	<context:component-scan base-package="action,dao">
-	</context:component-scan>
+	<context:component-scan base-package="action,dao,client"></context:component-scan>
 
 
 	<bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
@@ -25,8 +24,6 @@
 	<!-- <constructor-arg name="username" value="${mongo.username}" /> -->
 	<!-- <constructor-arg name="password" value="${mongo.password}" /> -->
 	<!-- </bean> -->
-
-	<!-- <bean id="baseMongoDaoImpl" class="dao.BaseMongoDaoImpl"/> -->
 
 	<mongo:mongo host="127.0.0.1" port="27017">
 		<mongo:options connections-per-host="60"

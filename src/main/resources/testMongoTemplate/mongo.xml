@@ -10,10 +10,7 @@
     http://www.springframework.org/schema/beans
     http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
-<!-- 	<context:component-scan base-package="dao" use-default-filters="true"> -->
-<!-- 		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/> -->
-<!-- 		<context:include-filter type="annotation" expression="org.springframework.stereotype.Repository"/> -->
-<!-- 	</context:component-scan> -->
-
+	<!-- 配置自定扫描的包 -->
+	<context:component-scan base-package="client"></context:component-scan>
     
 </beans>

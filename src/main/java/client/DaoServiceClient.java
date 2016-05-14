@@ -1,5 +1,8 @@
 package client;
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -11,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.MapUtils;
@@ -26,10 +30,11 @@ import org.springframework.web.client.RestTemplate;
 
 import service.ResponseStatus;
 import service.ServiceResponse;
+import utils.GenericsUtils;
+import utils.Json;
+import utils.ServiceQueryHelper;
 import entity.BaseEntity;
-import eyihcn.utils.GenericsUtils;
-import eyihcn.utils.Json;
-import eyihcn.utils.ServiceQueryHelper;
+import entity.ServerPortSetting;
 
 /**
  * daoService请求的client 抽象基本的crud ,数据库项目按系统模块部署到不同的服务器 1. 可以使用自己定义的请求Entry 2.
@@ -48,13 +53,6 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private RestTemplate restTemplate = new RestTemplate();
 	private static Map<String, Map<String, String>> serviceRouterConfigs = new HashMap<String, Map<String, String>>();
 
-	private static final String SAVE = "save";
-	private static final String UPDATE = "update";
-	private static final String FIND_ONE = "findOne";
-	private static final String DELETE_BY_ID = "deleteById";
-	private static final String FIND_LIST = "findList";
-	private static final String FIND_COLLECTION = "findCollection";
-	private static final String COUNTS = "counts";
 	protected static final String COLLECTION = "collection";
 	protected static final String COLLECTION_COUNT = "collectionCount";
 	protected static final String SEPARATOR = "/";
@@ -76,7 +74,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 
 	public DaoServiceClient() {
 		this.modelCode = this.getClass().getAnnotation(ModelCode.class);
-		initRquestHostAndToken(initServiceCode());
+//		initRquestHostAndToken(initServiceCode());
+		initRquestHostAndToken_2(initServiceCode());
 		this.modelName =  initModelName();
 		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
 		this.entityClassName = this.entityClass.getSimpleName();
@@ -136,6 +135,55 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		serviceConfig.put("TOKEN", token);
 		serviceRouterConfigs.put(serviceTokenCode, serviceConfig);
 	}
+	
+	
+	/**
+	 * 初始化请求的Host和Token
+	 */
+	protected void initRquestHostAndToken_2(String serviceTokenCode) {
+		String serviceAddressKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_ADDRESS";
+		String serviceTokenKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_TOKEN";
+		// 1. 先从缓存取host 和 token
+		Map<String, String> serviceConfig = serviceRouterConfigs.get(serviceTokenCode);
+		if (null != serviceConfig) {
+			host = ((String) serviceConfig.get("ADDRESS"));
+			token = ((String) serviceConfig.get("TOKEN"));
+			return;
+		}
+		// 2. 若缓存中没有，从系统变量中获取
+		host = readValue("E:/worksp/testdaoservice/src/main/resources/dao_service_router.properties", serviceAddressKey);
+		if(host != null) {
+			token = readValue("E:/worksp/testdaoservice/src/main/resources/dao_service_router.properties", serviceTokenKey);
+			return ;
+		}
+		// 3. 若系统变量中没有，查询数据库配置
+		ServerPortSetting sp =	new ServerSettingService().fetchServerPortSettingByCode(serviceTokenCode);
+		if (null == sp) {
+			throw new RuntimeException("no server config! serviceTokenCode=[" +serviceTokenCode+"]");
+		}
+		host = sp.getAddress();
+		token = sp.getToken();
+		// 缓存
+		serviceConfig = new HashMap<String, String>();
+		serviceConfig.put("ADDRESS", host);
+		serviceConfig.put("TOKEN", token);
+		serviceRouterConfigs.put(serviceTokenCode, serviceConfig);
+	}
+	
+	 //根据key读取value
+	 public  String readValue(String filePath,String key) {
+	  Properties props = new Properties();
+	        try {
+	         InputStream in = new BufferedInputStream (new FileInputStream(filePath));
+	         props.load(in);
+	         String value = props.getProperty (key);
+	         log.info(new StringBuilder("read properties : ").append(key).append(" = ").append(value).toString());
+            return value;
+	        } catch (Exception e) {
+	         e.printStackTrace();
+	         return null;
+	        }
+	 }
 
 	/**
 	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
@@ -220,7 +268,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 
 	public Map<String, Object> findEntityCollection(Map<String, Object> query) {
 		
-		initServiceEntry(FIND_COLLECTION);
+		initServiceEntry(RequestMethodName.FIND_COLLECTION.getMethodName());
 		Map<String, Object> map = null;
 		if (MapUtils.isEmpty(query)) {
 			map = getCollection();
@@ -232,14 +280,14 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 
 	public List<T> findEntityList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
 		
-		initServiceEntry(FIND_LIST);
+		initServiceEntry(RequestMethodName.FIND_LIST.getMethodName());
 		setServiceRequestQuery(query, sort, pagination);
 		return (List<T>)requestForResult();
 	}
 
 	public T findEntity(Map<String, Object> request) {
 		
-		initServiceEntry(FIND_ONE);
+		initServiceEntry(RequestMethodName.FIND_ONE.getMethodName());
 		setServiceRequestQuery(request, null, null);
 		return (T)requestForResult();
 	}
@@ -254,28 +302,28 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public boolean createEntity(Object object) {
-		initServiceEntry(SAVE);
+		initServiceEntry(RequestMethodName.SAVE.getMethodName());
 		setServiceRequestCreate(object);
 		getMapResponse();
 		return checkSuccess();
 	}
 
 	public boolean updateEntity(Object object) {
-		initServiceEntry(UPDATE);
+		initServiceEntry(RequestMethodName.UPDATE.getMethodName());
 		setServiceRequestUpdate(object);
 		getMapResponse();
 		return checkSuccess();
 	}
 
 	public boolean deleteEntityById(Integer id) {
-		initServiceEntry(DELETE_BY_ID);
+		initServiceEntry(RequestMethodName.DELETE_BY_ID.getMethodName());
 		setServiceEntry(id.toString());
 		getMapResponse();
 		return checkSuccess();
 	}
 
 	public int countsEntity(Map<String, Object> query) {
-		initServiceEntry(COUNTS);
+		initServiceEntry(RequestMethodName.COUNTS.getMethodName());
 		setServiceRequestQuery(query, null, null);
 		return Integer.parseInt(requestForResult().toString());
 	}
@@ -383,8 +431,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 */
 	public void setServiceRequestQuery(Object query, Object sort, Object pagination, Boolean excludeCount) {
 		HashMap<String, Object> request = new HashMap();
-		if (null != query) {
 			request.put("query", query);
+			if (null != query) {
 		}
 		if (null != sort) {
 			request.put("sort", sort);

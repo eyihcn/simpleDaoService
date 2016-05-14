@@ -4,6 +4,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
+
+import entity.ServerPortSetting;
+
+@Component
+@Scope("prototype")
 public class ServerSettingService extends DaoServiceClient<ServerPortSetting, Integer> {
 	// ServerPortSetting.class
 	private final String CREATE_SERVER_PORT_SETTING_ENTRY = "/serverSetting/createServerPortSetting";

@@ -21,6 +21,9 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
+import utils.CommonDaoHelper;
+import utils.GenericsUtils;
+
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
@@ -28,8 +31,6 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteResult;
 
 import entity.BaseEntity;
-import eyihcn.utils.CommonDaoHelper;
-import eyihcn.utils.GenericsUtils;
 
 /**
  * 

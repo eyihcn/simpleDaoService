@@ -1,9 +1,7 @@
 package test;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.After;
 import org.junit.Before;
@@ -15,10 +13,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.http.HttpEntity;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
 
 import entity.Product;
 
@@ -185,21 +179,5 @@ public class MongoTemplateDemo {
 		p2.setIsbn("ssss");
 		mongoDao.insert(p2);
 	}
-
-	@Test
-	public void test1() {
-		RestTemplate restTemplate = new RestTemplate();
-		MultiValueMap<String, Object> headers = new LinkedMultiValueMap();
-		headers.add("Accept", "application/json;charset=utf-8");
-		headers.add("Content-Type", "application/json;charset=utf-8");
-		String requestBody = "{}";
-		HttpEntity httpEntity = new HttpEntity(requestBody, headers);
-
-		restTemplate.postForObject(url + "sale/product/findAll", httpEntity, LinkedHashMap.class, new Object[0]);
-		restTemplate.postForObject(url + "sale/product/list", httpEntity, LinkedHashMap.class, new Object[0]);
-		restTemplate.postForObject(url + "sale/product/update", httpEntity, Map.class, new Object[0]);
-
-	}
-
 
 }

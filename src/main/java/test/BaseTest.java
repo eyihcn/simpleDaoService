@@ -1,5 +1,8 @@
 package test;
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -10,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.apache.commons.beanutils.BeanUtils;
@@ -19,6 +23,26 @@ import client.ModelCode;
 
 @ModelCode(modelName="sale")
 public class BaseTest {
+	
+	@Test
+	public void test6() {
+		readValue("E:/worksp/testdaoservice/src/main/resources/dao_service_router.properties", "JTOMTOPERP_SERVER_PORT_SETTING_SERVICE_ADDRESS");
+	}
+	
+	//根据key读取value
+	 public  String readValue(String filePath,String key) {
+	  Properties props = new Properties();
+	        try {
+	         InputStream in = new BufferedInputStream (new FileInputStream(filePath));
+	         props.load(in);
+	         String value = props.getProperty (key);
+	            System.out.println(key+"="+value);
+	            return value;
+	        } catch (Exception e) {
+	         e.printStackTrace();
+	         return null;
+	        }
+	 }
 	
 	@Test
 	public void test5() {
