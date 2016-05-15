@@ -25,6 +25,8 @@ public class DaoServiceClientTest {
 		ProductServiceClient client=  applicationContext.getBean(ProductServiceClient.class);
 		System.out.println(client.countsEntity(new HashMap<String, Object>()));
 	}
+	
+	
 	@Test
 	public void test1() {
 		ServerSettingService sss=  applicationContext.getBean(ServerSettingService.class);
