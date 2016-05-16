@@ -20,6 +20,7 @@ import org.springframework.data.mongodb.core.mapreduce.GroupByResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.util.Assert;
 
 import utils.CommonDaoHelper;
 import utils.GenericsUtils;
@@ -183,6 +184,12 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		return mongoTemplate.updateMulti(new Query(criteria), update, collectionName);
 	}
 
+	/**
+	 * 若entity有id，根据id执行更新操作
+	 * 若entity没有id，生成id，执行保存
+	 * @param entity
+	 * @return
+	 */
 	public Boolean saveOrUpdate(T entity) {
 		try {
 			if (null == entity.getId()) {
@@ -308,6 +315,12 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		return allOrCriteria;
 	}
 
+	/**
+	 * 根据操作符转换为Criteria查询条件
+	 * @param key
+	 * @param value
+	 * @return
+	 */
 	private List<Criteria> _parseCriteria(String key, Object value) {
 		if ("id".equals(key)) {
 			key = "_id";
@@ -359,6 +372,11 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		return criterias;
 	}
 
+	/**
+	 * 将Map查询参数转换为Criteria
+	 * @param query
+	 * @return
+	 */
 	public Criteria getRequestRestriction(Map<String, Object> query) {
 		Criteria allCriteria = new Criteria();
 		List<Criteria> criterias = new ArrayList<Criteria>();
@@ -409,7 +427,7 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 	}
 
 	public T fetchRow(Map<String, Object> requestArgs) {
-		Criteria criteria = getRequestRestriction((HashMap<String, Object>) requestArgs.get("query"));
+		Criteria criteria = getRequestRestriction((Map<String, Object>) requestArgs.get("query"));
 
 		return findOne(criteria);
 	}
@@ -450,18 +468,34 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		return Boolean.valueOf(true);
 	}
 
-	public Boolean update(Map<String, Object> requestArgs) {
-		Object id = requestArgs.get("id");
+	/**
+	 * 若id为空，更新失败
+	 * updateParam参数包含id 和 需要更新的字段
+	 * 更新的字段参数可以直接放在updateParam中，也可以另为封装一个Map(key名为updates，value 为封装的map)
+	 * @param updateParam
+	 * @return
+	 */
+	public Boolean update(Map<String, Object> updateParam) {
+		Assert.notEmpty(updateParam, "updateParam can not be empty");
+		Object id = updateParam.get("id");
 		if (null == id) {
 			return Boolean.valueOf(false);
 		}
 		try {
 			Update update = new Update();
-			Map<String, Object> updates = (Map) requestArgs.get("updates");
-			updates.remove("id");
-			updates.remove("class");
-			for (String key : updates.keySet()) {
-				update.set(key, updates.get(key));
+			Map<String, Object> updates = (Map<String,Object>) updateParam.get("updates");
+			if (null != updates) {
+				updates.remove("id");
+				updates.remove("class");
+				for (String key : updates.keySet()) {
+					update.set(key, updates.get(key));
+				}
+			}else {
+				updateParam.remove("id");
+				updateParam.remove("class");
+				for (String key : updateParam.keySet()) {
+					update.set(key, updateParam.get(key));
+				}
 			}
 			findAndModify(Criteria.where("id").is(id), update);
 		} catch (Exception e) {

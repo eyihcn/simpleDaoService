@@ -41,7 +41,6 @@ public class MongoTemplateDemo {
 		Product p = new Product();
 		p.setId(1l);
 		p.setName("pro-aa");
-		p.setPrice(2);
 		this.mongoDao.insert(p);
 	}
 
@@ -135,8 +134,6 @@ public class MongoTemplateDemo {
 		Product p = new Product();
 		p.setId(4l);
 		p.setName("pro-zz");
-		p.setPrice(3);
-		p.setNum(4);
 		// 1. 若将引用字段设置为null，则文档中对应的字段将被删除
 		// 2. save 是否可以插入新列,可以
 		mongoDao.save(p);
@@ -162,7 +159,7 @@ public class MongoTemplateDemo {
 		Product p1 = new Product();
 		p1.setId(6l);
 		p1.setName("pro-bb");
-		p1.setPrice(2); List<Product> list = new ArrayList<Product>();
+		List<Product> list = new ArrayList<Product>();
 		list.add(p1);
 		list.add(p);
 		// 插入到mongodb的顺序是按照list集合中元素添加的顺序
@@ -176,7 +173,6 @@ public class MongoTemplateDemo {
 		 * entity.Product!
 		 */
 		Product p2 = new Product();
-		p2.setIsbn("ssss");
 		mongoDao.insert(p2);
 	}
 

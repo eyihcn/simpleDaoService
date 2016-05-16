@@ -31,4 +31,10 @@ public class Product extends BaseEntity<Long> {
 		this.unitPrice = unitPrice;
 	}
 
+	@Override
+	public String toString() {
+		return "Product [id=" + id + ", name=" + name + ", unitPrice="
+				+ unitPrice + "]";
+	}
+
 }

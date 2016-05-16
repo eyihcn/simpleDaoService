@@ -10,7 +10,23 @@
     http://www.springframework.org/schema/beans
     http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
-	<!-- 配置自定扫描的包 -->
-	<context:component-scan base-package="client"></context:component-scan>
-    
+    <!-- 配置自定扫描的包 -->
+	<context:component-scan base-package="action,dao,client"></context:component-scan>
+
+	<bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
+		<constructor-arg name="mongo" ref="mongo" />
+		<constructor-arg name="databaseName" value="jtomtoperp" />
+		<!-- <constructor-arg name="userCredentials" ref="mongoCredentials"/> -->
+	</bean>
+
+	<!-- <bean id="mongoCredentials" class="org.springframework.data.authentication.UserCredentials"> -->
+	<!-- <constructor-arg name="username" value="${mongo.username}" /> -->
+	<!-- <constructor-arg name="password" value="${mongo.password}" /> -->
+	<!-- </bean> -->
+
+	<mongo:mongo host="127.0.0.1" port="27017">
+		<mongo:options connections-per-host="60"
+			threads-allowed-to-block-for-connection-multiplier="150"
+			connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
+	</mongo:mongo>
 </beans>

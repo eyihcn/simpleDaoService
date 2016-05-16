@@ -151,9 +151,11 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			return;
 		}
 		// 2. 若缓存中没有，从系统变量中获取
-		host = readValue("E:/worksp/testdaoservice/src/main/resources/dao_service_router.properties", serviceAddressKey);
+		///simpleDaoService/src/main/resources/dao_service_router.properties
+		//D:/DevCode/java_kepler_code/simpleDaoService/src/main/resources/dao_service_router.properties
+		host = readValue("D:/DevCode/java_kepler_code/simpleDaoService/src/main/resources/dao_service_router.properties", serviceAddressKey);
 		if(host != null) {
-			token = readValue("E:/worksp/testdaoservice/src/main/resources/dao_service_router.properties", serviceTokenKey);
+			token = readValue("D:/DevCode/java_kepler_code/simpleDaoService/src/main/resources/dao_service_router.properties", serviceTokenKey);
 			return ;
 		}
 		// 3. 若系统变量中没有，查询数据库配置
