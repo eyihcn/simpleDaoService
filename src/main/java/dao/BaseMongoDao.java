@@ -149,31 +149,28 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 	public T findOne(Integer skip) {
 		Query query = new Query().skip(skip.intValue()).limit(1);
 		_sort(query);
-
 		return mongoTemplate.findOne(query, entityClass, collectionName);
 	}
 
-	public Boolean remove(T object) {
+	public Boolean delete(T object) {
 		try {
 			if (object.getId() == null) {
 				return false;
 			}
-			remove(Criteria.where("_id").is(object.getId()));
+			delete(Criteria.where("id").is(object.getId()));
 		} catch (Exception e) {
 			e.printStackTrace();
-
 			return Boolean.valueOf(false);
 		}
 
 		return Boolean.valueOf(true);
 	}
 
-	public Boolean remove(Criteria criteria) {
+	public Boolean delete(Criteria criteria) {
 		try {
 			mongoTemplate.remove(new Query(criteria), this.entityClass, collectionName);
 		} catch (Exception e) {
 			e.printStackTrace();
-
 			return Boolean.valueOf(false);
 		}
 
@@ -422,10 +419,6 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		return Long.valueOf(count(criteria));
 	}
 
-	public T load(PK id) {
-		return findById(id);
-	}
-
 	public T fetchRow(Map<String, Object> requestArgs) {
 		Criteria criteria = getRequestRestriction((Map<String, Object>) requestArgs.get("query"));
 
@@ -518,13 +511,19 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		}
 		return Boolean.valueOf(true);
 	}
+	
+	public Boolean delete(Map<String,Object> query) {
+		Assert.notNull(query);
+		return delete(getRequestRestriction(query));
+	}
+
 
 	public Boolean deleteById(PK id) {
-		T object = load(id);
+		T object = findById(id);
 		if (null == object) {
 			return Boolean.valueOf(false);
 		}
-		return remove(object);
+		return delete(object);
 	}
 
 	public BasicDBList group(Map<String, Object> requestArgs) throws Exception {
