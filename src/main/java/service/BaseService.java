@@ -18,7 +18,9 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	private static final String SAVE = "save";
 	private static final String UPDATE = "update";
 	private static final String FIND_ONE = "findOne";
+	private static final String FIND_BY_ID = "findById";
 	private static final String DELETE_BY_ID = "deleteById";
+	private static final String DELETE = "delete";
 	private static final String FIND_LIST = "findList";
 	private static final String FIND_COLLECTION = "findCollection";
 	private static final String COUNTS = "counts";
@@ -94,6 +96,21 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		return serviceResponse;
 	}
 
+	@RequestMapping(value = FIND_BY_ID, method = RequestMethod.POST)
+	@ResponseBody
+//	public ServiceResponse findById(@RequestBody PK id) { //Can not construct instance of java.io.Serializable, problem: abstract types either need to be mapped to concrete types, have custom deserializer, or be instantiated with additional type information
+	public ServiceResponse findById(@RequestBody Long id) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			T entity = daoFindById(id);
+			serviceResponse.setResult(entity);
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
 
 	@RequestMapping(value = FIND_LIST, method = RequestMethod.POST)
 	@ResponseBody
@@ -111,10 +128,28 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 
 	@RequestMapping(value = DELETE_BY_ID, method = RequestMethod.POST)
 	@ResponseBody
-	public ServiceResponse delete(@RequestBody PK id) {
+//	public ServiceResponse delete(@RequestBody PK id) {
+	public ServiceResponse delete(@RequestBody Long id) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			if (!daoDeleteById(id)) {
+				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
+			} else {
+				serviceResponse.setResult(true);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
+	@RequestMapping(value = DELETE, method = RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse delete(@RequestBody Map<String, Object> request) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			if (!daoDelete(request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -147,12 +182,18 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public abstract boolean daoUpdate(Map<String, Object> request);
 
 	public abstract T daoFindOne(Map<String, Object> request);
+	
+//	public abstract T daoFindById(PK id);
+	public abstract T daoFindById(Long id); //具体化类型,否则jackson 无法实例化主键，mvc绑定参数失败o(︶︿︶)o 唉！
 
 	public abstract List<T> daoFindCollection(Map<String, Object> request);
 
 	public abstract Long daoFindCollectionCount(Map<String, Object> request);
 
-	public abstract boolean daoDeleteById(PK id);
+//	public abstract boolean daoDeleteById(PK id);
+	public abstract boolean daoDeleteById(Long id);
+	
+	public abstract boolean daoDelete(Map<String, Object> request);
 	
 	public abstract Long counts(Map<String, Object> request);
 }

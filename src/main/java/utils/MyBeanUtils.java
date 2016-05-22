@@ -1,122 +1,18 @@
-package test;
+package utils;
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
 
 import org.apache.commons.beanutils.BeanUtils;
-import org.junit.Test;
-
-import client.ModelCode;
-
-@ModelCode(modelName="sale")
-public class BaseTest {
-	
-	@Test
-	public void test6() {
-		readValue("E:/worksp/testdaoservice/src/main/resources/dao_service_router.properties", "JTOMTOPERP_SERVER_PORT_SETTING_SERVICE_ADDRESS");
-	}
-	
-	//根据key读取value
-	 public  String readValue(String filePath,String key) {
-	  Properties props = new Properties();
-	        try {
-	         InputStream in = new BufferedInputStream (new FileInputStream(filePath));
-	         props.load(in);
-	         String value = props.getProperty (key);
-	            System.out.println(key+"="+value);
-	            return value;
-	        } catch (Exception e) {
-	         e.printStackTrace();
-	         return null;
-	        }
-	 }
-	
-	@Test
-	public void test5() {
-		ModelCode annotation = this.getClass().getAnnotation(ModelCode.class);
-		System.out.println(annotation.modelName());
-		System.out.println(annotation.serviceCode());
-		
-	}
-
-	@Test
-	public void test4() {
-		Class<?> classType = User.class;
-		Field[] fs = classType.getDeclaredFields(); // 得到所有的fields
-
-		for (Field f : fs) {
-			Class fieldClazz = f.getType(); // 得到field的class及类型全路径
-
-			if (fieldClazz.isPrimitive())
-				continue; // 【1】 //判断是否为基本类型
-
-			if (fieldClazz.getName().startsWith("java.lang"))
-				continue; // getName()返回field的类型全路径；
-
-			if (fieldClazz.isAssignableFrom(List.class)) // 【2】
-			{
-				Type fc = f.getGenericType(); // 关键的地方，如果是List类型，得到其Generic的类型
-
-				if (fc == null)
-					continue;
-
-				if (fc instanceof ParameterizedType) // 【3】如果是泛型参数的类型
-				{
-					ParameterizedType pt = (ParameterizedType) fc;
-
-					Class genericClazz = (Class) pt.getActualTypeArguments()[0]; // 【4】
-																					// 得到泛型里的class类型对象。
-					System.out.println(genericClazz.getName());
-				}
-			}
-		}
-	}
-
-	@Test
-	public void test2() {
-		Map<String, Object> user = new HashMap<String, Object>();
-		user.put("name", "user-AA");
-		Map<String, Object> dept = new HashMap<String, Object>();
-		dept.put("deptNo", 1);
-		user.put("dept", dept);
-		List<Map<String, Object>> accList = new ArrayList<Map<String, Object>>();
-		dept.put("listacc", accList);
-		Map<String, Object> acc = null;
-		acc = new HashMap<String, Object>();
-		acc.put("accounName", "acc-AA");
-		acc.put("password", "acc-password");
-		accList.add(acc);
-		acc = new HashMap<String, Object>();
-		acc.put("accounName", "acc-BB");
-		acc.put("password", "acc-password");
-		accList.add(acc);
-		user.put("accountList", accList);
-		Set<Map<String,Object>> deptSet = new HashSet<Map<String,Object>>();
-		deptSet.add(dept);
-		user.put("deptSet", deptSet);
-		Set<Integer> lll = new HashSet<Integer>();
-		lll.add(1);
-		lll.add(2);
-		user.put("listInt",lll);
-		user.put("listMap", accList);
-		User user1 = _mapToEntity(User.class, user, "test");
-		System.out.println(user1.getDept().getListacc().get(1).getAccounName());
-		System.out.println(user1.getAccountList().get(0).getAccounName());
-	}
-
+@SuppressWarnings({ "unchecked", "rawtypes" })
+public final class MyBeanUtils {
 
 	/**
 	 * 
@@ -127,8 +23,7 @@ public class BaseTest {
 	 * @param args
 	 * @return
 	 */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public <T> T _mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
+	public static <T> T _mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
 		// 暂时处理Collection的实体集合转换
 		T entity = null;
 		try{
@@ -204,7 +99,7 @@ public class BaseTest {
 	 *            自定义orm的包名
 	 * @return true:是自定义orm false:不是自定义orm
 	 */
-	private boolean isSelfDesignOrm(Class<?> clazz, String... ormPackageNames) {
+	public static boolean isSelfDesignOrm(Class<?> clazz, String... ormPackageNames) {
 		if (null == ormPackageNames || ormPackageNames.length == 0) {
 			return clazz.getPackage().getName().startsWith("com.tomtop.application.orm");
 		}

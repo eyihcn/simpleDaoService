@@ -57,8 +57,9 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		this.collectionName = _getCollectionName();
 	}
 
-	public BaseMongoDao(Class<T> entityClass) {
+	public BaseMongoDao(Class<T> entityClass,Class<PK> pkClass) {
 		this.entityClass = entityClass;
+		this.pkClass = pkClass;
 		collectionName = _getCollectionName();
 	}
 

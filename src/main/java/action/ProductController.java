@@ -18,4 +18,5 @@ public class ProductController extends CRUDService<Product, Long> {
 	public void setCommonDao(BaseMongoDao<Product, Long> productDao) {
 		super.setCommonDao(productDao);
 	}
+	
 }

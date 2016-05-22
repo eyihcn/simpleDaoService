@@ -2,7 +2,7 @@ package client;
 
 public enum RequestMethodName {
 
-	SAVE("save"),UPDATE("update"),DELETE_BY_ID("deleteById"),COUNTS("counts"),FIND_BY_ID("findById"),
+	SAVE("save"),UPDATE("update"),DELETE("delete"),DELETE_BY_ID("deleteById"),COUNTS("counts"),FIND_BY_ID("findById"),
 	FIND_ONE("findOne"),FIND_LIST("findList"),FIND_COLLECTION("findCollection");
 	
 	private String methodName;

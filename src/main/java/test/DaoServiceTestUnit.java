@@ -9,7 +9,15 @@ import org.junit.Test;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.http.HttpEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
+import service.ServiceResponse;
+import utils.Json;
+import utils.MyBeanUtils;
+import client.ProductServiceClient;
 import dao.ProductDao;
 import entity.Product;
 
@@ -19,7 +27,10 @@ public class DaoServiceTestUnit {
 	ApplicationContext applicationContext;
 	String configLocation = "classpath:/testMongoTemplate/mongo.xml";
 	ProductDao productDao ;
-	
+	RestTemplate restTemplate = null;
+	String url = "http://localhost:8080/testdaoservice/";
+	MultiValueMap<String, Object> headers = null;
+	ProductServiceClient client = null;
 	
 	@Before
 	public void setUp() {
@@ -27,6 +38,13 @@ public class DaoServiceTestUnit {
 		
 		applicationContext = new ClassPathXmlApplicationContext(configLocation);
 		productDao = applicationContext.getBean(ProductDao.class);
+		
+		restTemplate = new RestTemplate();
+		headers = new LinkedMultiValueMap<String, Object>();
+		headers.add("Accept", "application/json;charset=utf-8");
+		headers.add("Content-Type", "application/json;charset=utf-8");
+		
+		client = applicationContext.getBean(ProductServiceClient.class);
 		
 		System.out.println("setup over");
 	}
@@ -38,9 +56,123 @@ public class DaoServiceTestUnit {
 		System.out.println("tearDown ...");
 	}
 	
+	@Test
+	public void testServiceClient_DeleteById() {
+		System.out.println(client.deleteEntityById(7));
+	}
+	
+	@Test
+	public void testServiceClient_Save() {
+		Product pro = new Product();
+		pro.setName("pro-2-c");
+		pro.setUnitPrice(134);
+		System.out.println(client.updateEntity(pro));
+		System.out.println(client.createEntity(pro));
+	}
+	
+	
+	@Test
+	public void testServiceClient_Update() {
+		Product pro = client.findEntityById(7);
+		System.out.println(pro);
+		pro.setName("pro-1-d");
+		client.updateEntity(pro);
+		System.out.println(client.findEntityById(7));
+	}
+	
+	@Test
+	public void testServiceClient_find() {
+		System.out.println(client.findEntityById(7));
+		Map<String,Object> query = new HashMap<String,Object>();
+		query.put("unitPrice", 12);
+		System.out.println(client.findEntityList(query, null, null));
+	}
 	
 	
 	
+	// ==================BaseService======================
+	
+	@Test
+	public void testCrudService_DeleteById() {
+		String requestUrl = url+"sale/Product/deleteById";
+		String jsonParam = "6";
+		System.out.println(jsonParam);
+		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
+		ServiceResponse serviceResponse  = restTemplate.postForObject(requestUrl , httpEntity, ServiceResponse.class, new Object[0]);
+		System.out.println(Json.toJson(serviceResponse));
+	}
+	
+	@Test
+	public void testCrudService_Update() {
+		
+		String requestUrl = url+"sale/Product/findById";
+		String jsonParam = "6";
+		System.out.println(jsonParam);
+
+		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
+		Map<String,Object> properties  = restTemplate.postForObject(requestUrl , httpEntity, Map.class, new Object[0]);
+		Map<String,Object> result = (Map<String, Object>) properties.get("result");
+		
+//		ServiceResponse serviceResponse = MyBeanUtils._mapToEntity(ServiceResponse.class, properties, "entity");
+//		Product pr = (Product) serviceResponse.getResult();
+		Product pr = MyBeanUtils._mapToEntity(Product.class, result, "entity");
+		pr.setName("pro-1-c");
+		pr.setUnitPrice(7.7);
+		requestUrl = url+"sale/Product/update";
+		jsonParam = Json.toJson(pr);
+		System.out.println(jsonParam);
+		
+		httpEntity = new HttpEntity(jsonParam, headers);
+		ServiceResponse serResponse  = restTemplate.postForObject(requestUrl , httpEntity, ServiceResponse.class, new Object[0]);
+		System.out.println(Json.toJson(serResponse));
+	}
+	
+	@Test
+	public void testCrudService_findOne() {
+		
+		String requestUrl = url+"sale/Product/findOne";
+		String jsonParam = "7";
+		Map<String,Object> query = new HashMap<String, Object>();
+		query.put("id", 7);
+		jsonParam = Json.toJson(query);
+		System.out.println(jsonParam);
+		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
+		ServiceResponse serviceResponse  = restTemplate.postForObject(requestUrl , httpEntity, ServiceResponse.class, new Object[0]);
+		System.out.println(Json.toJson(serviceResponse.getResult()));
+		
+	}
+	
+	@Test
+	public void testCrudService_findById() {
+		
+		String requestUrl = url+"sale/Product/findById";
+		String jsonParam = "7";
+		System.out.println(jsonParam);
+		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
+		ServiceResponse serviceResponse  = restTemplate.postForObject(requestUrl , httpEntity, ServiceResponse.class, new Object[0]);
+		System.out.println(Json.toJson(serviceResponse.getResult()));
+		
+	}
+	
+	
+	@Test
+	public void testCrudService_Save() {
+		
+		String requestUrl = url+"sale/Product/save";
+		String jsonParam = "{}";
+		Product product =new Product();
+		product.setName("pro-1-b");
+		product.setUnitPrice(1314);
+		jsonParam = Json.toJson(product);
+		
+		System.out.println(jsonParam);
+		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
+		
+		String json  = restTemplate.postForObject(requestUrl , httpEntity, String.class, new Object[0]);
+		System.out.println(json);
+	}
+	
+	// ===================BaseMongoDao-Test======================
 	@Test
 	public void testDelete() {
 		Map<String,Object> query = new HashMap<String, Object>();
@@ -57,6 +189,10 @@ public class DaoServiceTestUnit {
 		System.out.println(productDao.deleteById(4L));
 	}
 	
+	@Test
+	public void testBaseDao_fetchCollectionCount() {
+		System.out.println(productDao.fetchCollectionCount(new HashMap()));
+	}
 	
 	@Test
 	public void testBaseDao_counts() {
@@ -100,7 +236,7 @@ public class DaoServiceTestUnit {
 	@Test
 	public void testBaseDao_save() {
 		Product  p = new Product();
-//		p.setName("test-ProB");
+		p.setName("test-ProB");
 		p.setUnitPrice(12);
 		System.out.println(productDao.saveOrUpdate(p));
 	}

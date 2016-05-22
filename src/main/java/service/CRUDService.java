@@ -1,8 +1,11 @@
 package service;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.data.mongodb.core.query.Criteria;
 
 import dao.BaseMongoDao;
 import entity.BaseEntity;
@@ -37,7 +40,15 @@ public abstract class CRUDService<T extends BaseEntity<PK>, PK extends Serializa
 
 	@Override
 	public T daoFindOne(Map<String, Object> request) {
-		return (T) commonDao.fetchRow(request);
+		return  commonDao.fetchRow(request);
+	}
+	
+	@Override
+	public T daoFindById(Long id) {
+		if (null == id) {
+			return null;
+		}
+		return commonDao.findOne(Criteria.where("id").is(id));
 	}
 
 	@Override
@@ -51,16 +62,32 @@ public abstract class CRUDService<T extends BaseEntity<PK>, PK extends Serializa
 	}
 
 	@Override
-	public boolean daoDeleteById(PK id) {
-		return commonDao.deleteById(id);
+	public boolean daoDeleteById(Long id) {
+		if (id == null) {
+			return false;
+		}
+		Map<String,Object> query = new HashMap<String,Object>();
+		query.put("id", id);
+		return commonDao.delete(query);
 	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public boolean daoDelete(Map<String, Object> request) {
+		Map<String,Object> query = (Map<String, Object>) request.get("query");
+		if (query == null) {
+			return false;
+		}
+		return commonDao.delete(query);
+	}
+	
 	
 	@SuppressWarnings("unchecked")
 	@Override
 	public Long counts(Map<String, Object> request) {
 		Map<String,Object> query = (Map<String, Object>) request.get("query");
 		if (query == null) {
-			return null;
+			return commonDao.count();
 		}
 		return commonDao.count(query);
 	}

@@ -32,7 +32,6 @@ import service.ResponseStatus;
 import service.ServiceResponse;
 import utils.GenericsUtils;
 import utils.Json;
-import utils.ServiceQueryHelper;
 import entity.BaseEntity;
 import entity.ServerPortSetting;
 
@@ -198,6 +197,13 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 	
 	/**
+	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
+	 */
+	private void initServiceEntry( RequestMethodName requestMethodName) {
+		initServiceEntry(requestMethodName.getMethodName());
+	}
+	
+	/**
 	 * headers支持 json格式
 	 * @param responseType 返回结果类型
 	 * @param requsetURL 请求URL
@@ -261,7 +267,10 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @return
 	 */
 	private  String buildRequestURL() {
-		return new StringBuilder(StringUtils.stripEnd(getServiceAddress(), "/")).append( StringUtils.stripEnd(getServiceEntry(), "/")).append("?token=" + getServiceToken()).toString();
+		return new StringBuilder(StringUtils.stripEnd(getServiceAddress(), "/"))
+				.append( StringUtils.stripEnd(getServiceEntry(), "/"))
+				.append("?token=" + getServiceToken())
+				.toString();
 	}
 	
 	public Map<String, Object> findEntityCollection() {
@@ -270,7 +279,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 
 	public Map<String, Object> findEntityCollection(Map<String, Object> query) {
 		
-		initServiceEntry(RequestMethodName.FIND_COLLECTION.getMethodName());
+		initServiceEntry(RequestMethodName.FIND_COLLECTION);
 		Map<String, Object> map = null;
 		if (MapUtils.isEmpty(query)) {
 			map = getCollection();
@@ -282,51 +291,74 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 
 	public List<T> findEntityList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
 		
-		initServiceEntry(RequestMethodName.FIND_LIST.getMethodName());
+		initServiceEntry(RequestMethodName.FIND_LIST);
 		setServiceRequestQuery(query, sort, pagination);
-		return (List<T>)requestForResult();
+		return _mapToEntity(entityClass, (Collection<Map<String, Object>>) requestForResult(), ormPackageNames);
 	}
 
 	public T findEntity(Map<String, Object> request) {
 		
-		initServiceEntry(RequestMethodName.FIND_ONE.getMethodName());
-		setServiceRequestQuery(request, null, null);
-		return (T)requestForResult();
+		initServiceEntry(RequestMethodName.FIND_ONE);
+		setRequestParam(Json.toJson(request));
+		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(), ormPackageNames);
 	}
 
 	public T findEntityById(Integer id) {
 		if (null == id) {
 			return null;
 		}
-		Map<String, Object> request = new HashMap<String, Object>();
-		ServiceQueryHelper.and(request, "_id", id);
-		return findEntity(request);
+		initServiceEntry(RequestMethodName.FIND_BY_ID);
+		setRequestParam(id.toString());
+		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(), ormPackageNames);
 	}
 
-	public boolean createEntity(Object object) {
-		initServiceEntry(RequestMethodName.SAVE.getMethodName());
-		setServiceRequestCreate(object);
+	public boolean createEntity(T entity) {
+		return createEntity(Json.toJson(entity));
+	}
+	
+	public boolean createEntity(Map<String,Object> properties) {
+		return createEntity(Json.toJson(properties));
+	}
+	
+	public boolean createEntity(String jsonParam) {
+		initServiceEntry(RequestMethodName.SAVE);
+		setRequestParam(jsonParam);
 		getMapResponse();
 		return checkSuccess();
 	}
 
-	public boolean updateEntity(Object object) {
-		initServiceEntry(RequestMethodName.UPDATE.getMethodName());
-		setServiceRequestUpdate(object);
+	public boolean updateEntity(T entity) {
+		return updateEntity(Json.toJson(entity));
+	}
+	
+	public boolean updateEntity(Map<String,Object> properties) {
+		return updateEntity(Json.toJson(properties));
+	}
+	
+	public boolean updateEntity(String jsonParam) {
+		initServiceEntry(RequestMethodName.UPDATE);
+		setRequestParam(jsonParam);
+		getMapResponse();
+		return checkSuccess();
+	}
+	
+	public boolean delete(Map<String,Object> query) {
+		initServiceEntry(RequestMethodName.DELETE);
+		setRequestParam(Json.toJson(query));
 		getMapResponse();
 		return checkSuccess();
 	}
 
 	public boolean deleteEntityById(Integer id) {
-		initServiceEntry(RequestMethodName.DELETE_BY_ID.getMethodName());
-		setServiceEntry(id.toString());
+		initServiceEntry(RequestMethodName.DELETE_BY_ID);
+		setRequestParam(id.toString());
 		getMapResponse();
 		return checkSuccess();
 	}
 
 	public int countsEntity(Map<String, Object> query) {
-		initServiceEntry(RequestMethodName.COUNTS.getMethodName());
-		setServiceRequestQuery(query, null, null);
+		initServiceEntry(RequestMethodName.COUNTS);
+		setRequestParam(Json.toJson(query));
 		return Integer.parseInt(requestForResult().toString());
 	}
 
@@ -540,7 +572,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public void setTimeOut(int timeOut) {
 		this.timeOut = timeOut;
 	}
-
+	
 	/**
 	 * 若无法满足实体映射可以被覆盖，提供自己的实现
 	 * 
@@ -617,6 +649,14 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			e.printStackTrace();
 		}
 		return entity;
+	}
+	
+	public List<T> _mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
+		List<T> entities = new ArrayList<T>();
+		for (Map<String,Object> properties: propertiesCol) {
+			entities.add(_mapToEntity(clazz, properties, ormPackageNames));
+		}
+		return entities;
 	}
 	
 	/**
