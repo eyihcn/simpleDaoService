@@ -37,6 +37,11 @@ public abstract class CRUDService<T extends BaseEntity<PK>, PK extends Serializa
 	public boolean daoUpdate(Map<String, Object> request) {
 		return commonDao.update(request);
 	}
+	
+	@Override
+	public boolean daoSaveOrUpdate(Map<String, Object> request) {
+		return commonDao.saveOrUpdate(request);
+	}
 
 	@Override
 	public T daoFindOne(Map<String, Object> request) {

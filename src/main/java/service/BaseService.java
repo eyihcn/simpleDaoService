@@ -17,6 +17,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 
 	private static final String SAVE = "save";
 	private static final String UPDATE = "update";
+	private static final String SAVE_OR_UPDATE = "saveOrUpdate";
 	private static final String FIND_ONE = "findOne";
 	private static final String FIND_BY_ID = "findById";
 	private static final String DELETE_BY_ID = "deleteById";
@@ -70,6 +71,23 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			if (!daoUpdate(request)) {
+				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
+			} else {
+				serviceResponse.setResult(true);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
+	@RequestMapping(value = SAVE_OR_UPDATE, method = RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse saveOrUpdate(@RequestBody Map<String, Object> request) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			if (!daoSaveOrUpdate(request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -180,6 +198,8 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public abstract boolean daoSave(Map<String, Object> request);
 
 	public abstract boolean daoUpdate(Map<String, Object> request);
+	
+	public abstract boolean daoSaveOrUpdate(Map<String, Object> request);
 
 	public abstract T daoFindOne(Map<String, Object> request);
 	

@@ -177,9 +177,41 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 
 		return Boolean.valueOf(true);
 	}
+	
+	public Boolean delete(Map<String,Object> query) {
+		Assert.notNull(query);
+		return delete(getRequestRestriction(query));
+	}
+
+
+	public Boolean deleteById(PK id) {
+		T object = findById(id);
+		if (null == object) {
+			return Boolean.valueOf(false);
+		}
+		return delete(object);
+	}
 
 	public WriteResult updateMulti(Criteria criteria, Update update) {
 		return mongoTemplate.updateMulti(new Query(criteria), update, collectionName);
+	}
+	
+	/**
+	 * 若properties有id，根据id执行更新操作
+	 * 若properties没有id，生成id，执行保存
+	 * @param properties
+	 * @return
+	 */
+	public Boolean saveOrUpdate(Map<String, Object> properties) {
+		try {
+			T object = getEntityClass().newInstance();
+			BeanUtils.populate(object, properties);
+			saveOrUpdate(object);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return Boolean.valueOf(false);
+		}
+		return Boolean.valueOf(true);
 	}
 
 	/**
@@ -200,6 +232,64 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		}
 		return Boolean.valueOf(true);
 	}
+	
+	/**
+	 * 若id为空，更新失败
+	 * updateParam参数包含id 和 需要更新的字段
+	 * 更新的字段参数可以直接放在updateParam中，也可以另为封装一个Map(key名为updates，value 为封装的map)
+	 * @param updateParam
+	 * @return
+	 */
+	public Boolean update(Map<String, Object> updateParam) {
+		Assert.notEmpty(updateParam, "updateParam can not be empty");
+		Object id = updateParam.get("id");
+		if (null == id) {
+			return Boolean.valueOf(false);
+		}
+		try {
+			Update update = new Update();
+			Map<String, Object> updates = (Map<String,Object>) updateParam.get("updates");
+			if (null != updates) {
+				updates.remove("id");
+				updates.remove("class");
+				for (String key : updates.keySet()) {
+					update.set(key, updates.get(key));
+				}
+			}else {
+				updateParam.remove("id");
+				updateParam.remove("class");
+				for (String key : updateParam.keySet()) {
+					update.set(key, updateParam.get(key));
+				}
+			}
+			findAndModify(Criteria.where("id").is(id), update);
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return Boolean.valueOf(false);
+		}
+
+		return Boolean.valueOf(true);
+	}
+
+	/**
+	 * 忽略id，插入新的文档
+	 * @param properties 属性值Map
+	 * @return
+	 */
+	public Boolean save(Map<String, Object> properties) {
+		try {
+			properties.remove("id");
+			properties.remove("_id");
+			T object = getEntityClass().newInstance();
+			BeanUtils.populate(object, properties);
+			saveOrUpdate(object);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return Boolean.valueOf(false);
+		}
+		return Boolean.valueOf(true);
+	}
 
 	public Boolean insert(Collection<T> batchToSave) {
 		try {
@@ -210,22 +300,6 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		}
 
 		return Boolean.valueOf(true);
-	}
-
-	public MongoOperations getMongoOperation() {
-		return mongoTemplate;
-	}
-
-	public void setCollectionName(String collectionName) {
-		this.collectionName = collectionName;
-	}
-
-	public String getCollectionName() {
-		return collectionName;
-	}
-
-	public Class<T> getEntityClass() {
-		return entityClass;
 	}
 
 	public String getNextId() {
@@ -462,71 +536,6 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		return Boolean.valueOf(true);
 	}
 
-	/**
-	 * 若id为空，更新失败
-	 * updateParam参数包含id 和 需要更新的字段
-	 * 更新的字段参数可以直接放在updateParam中，也可以另为封装一个Map(key名为updates，value 为封装的map)
-	 * @param updateParam
-	 * @return
-	 */
-	public Boolean update(Map<String, Object> updateParam) {
-		Assert.notEmpty(updateParam, "updateParam can not be empty");
-		Object id = updateParam.get("id");
-		if (null == id) {
-			return Boolean.valueOf(false);
-		}
-		try {
-			Update update = new Update();
-			Map<String, Object> updates = (Map<String,Object>) updateParam.get("updates");
-			if (null != updates) {
-				updates.remove("id");
-				updates.remove("class");
-				for (String key : updates.keySet()) {
-					update.set(key, updates.get(key));
-				}
-			}else {
-				updateParam.remove("id");
-				updateParam.remove("class");
-				for (String key : updateParam.keySet()) {
-					update.set(key, updateParam.get(key));
-				}
-			}
-			findAndModify(Criteria.where("id").is(id), update);
-		} catch (Exception e) {
-			e.printStackTrace();
-
-			return Boolean.valueOf(false);
-		}
-
-		return Boolean.valueOf(true);
-	}
-
-	public Boolean save(Map<String, Object> requestArgs) {
-		try {
-			T object = getEntityClass().newInstance();
-			BeanUtils.populate(object, requestArgs);
-			saveOrUpdate(object);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return Boolean.valueOf(false);
-		}
-		return Boolean.valueOf(true);
-	}
-	
-	public Boolean delete(Map<String,Object> query) {
-		Assert.notNull(query);
-		return delete(getRequestRestriction(query));
-	}
-
-
-	public Boolean deleteById(PK id) {
-		T object = findById(id);
-		if (null == object) {
-			return Boolean.valueOf(false);
-		}
-		return delete(object);
-	}
-
 	public BasicDBList group(Map<String, Object> requestArgs) throws Exception {
 		Criteria criteria = getRequestRestriction((HashMap<String, Object>) requestArgs.get("query"));
 		HashMap<String, String> groupConditions = (HashMap) requestArgs.get("group");
@@ -557,4 +566,34 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 	public void setMongoTemplate(MongoTemplate mongoTemplate) {
 		this.mongoTemplate = mongoTemplate;
 	}
+	
+	public MongoOperations getMongoOperation() {
+		return mongoTemplate;
+	}
+
+	public void setCollectionName(String collectionName) {
+		this.collectionName = collectionName;
+	}
+
+	public String getCollectionName() {
+		return collectionName;
+	}
+
+	public Class<T> getEntityClass() {
+		return entityClass;
+	}
+
+	public void setEntityClass(Class<T> entityClass) {
+		this.entityClass = entityClass;
+	}
+
+	public Class<PK> getPkClass() {
+		return pkClass;
+	}
+
+	public void setPkClass(Class<PK> pkClass) {
+		this.pkClass = pkClass;
+	}
+
+	
 }
