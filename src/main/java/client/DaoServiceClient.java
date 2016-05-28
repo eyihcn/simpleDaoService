@@ -300,7 +300,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(), ormPackageNames);
 	}
 
-	public T findEntityById(Integer id) {
+	public T findEntityById(PK id) {
 		if (null == id) {
 			return null;
 		}
@@ -361,7 +361,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return checkSuccess();
 	}
 
-	public boolean deleteEntityById(Integer id) {
+	public boolean deleteEntityById(PK id) {
 		initServiceEntry(RequestMethodName.DELETE_BY_ID);
 		setRequestParam(id.toString());
 		getMapResponse();
