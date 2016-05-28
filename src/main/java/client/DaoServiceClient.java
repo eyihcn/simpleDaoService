@@ -1,7 +1,6 @@
 package client;
 
 import java.io.BufferedInputStream;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
@@ -150,11 +149,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			return;
 		}
 		// 2. 若缓存中没有，从系统变量中获取
-		///simpleDaoService/src/main/resources/dao_service_router.properties
-		//D:/DevCode/java_kepler_code/simpleDaoService/src/main/resources/dao_service_router.properties
-		host = readValue("D:/DevCode/java_kepler_code/simpleDaoService/src/main/resources/dao_service_router.properties", serviceAddressKey);
+		host = readValue("dao_service_router.properties", serviceAddressKey);
 		if(host != null) {
-			token = readValue("D:/DevCode/java_kepler_code/simpleDaoService/src/main/resources/dao_service_router.properties", serviceTokenKey);
+			token = readValue("dao_service_router.properties", serviceTokenKey);
 			return ;
 		}
 		// 3. 若系统变量中没有，查询数据库配置
@@ -172,10 +169,10 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 	
 	 //根据key读取value
-	 public  String readValue(String filePath,String key) {
+	 private  String readValue(String filePath,String key) {
 	  Properties props = new Properties();
 	        try {
-	         InputStream in = new BufferedInputStream (new FileInputStream(filePath));
+	         InputStream in = new BufferedInputStream (this.getClass().getClassLoader().getResourceAsStream(filePath));
 	         props.load(in);
 	         String value = props.getProperty (key);
 	         log.info(new StringBuilder("read properties : ").append(key).append(" = ").append(value).toString());

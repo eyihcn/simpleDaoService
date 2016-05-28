@@ -1,5 +1,7 @@
 package utils;
 
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -9,10 +11,69 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.commons.beanutils.BeanUtils;
+import org.junit.Test;
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public final class MyBeanUtils {
+	
+	
+	/**
+	 * 字符串过长换行显示
+	 * @param str
+	 * @param lineLength 多长换一次行
+	 * @return
+	 */
+	public  String addBR(String str,int lineLength) {
+//		if (StringUtils.isBlank(comment)) {
+//			return "";
+//		}
+//		int block = 30;
+		int len = str.length();
+		if (len <= lineLength) {
+			return str;
+		}
+		StringBuilder comm = new StringBuilder();
+		int endIndex = 0;
+		int fromIndex = 0;
+		int count = 0;
+		while ( true ) {
+			fromIndex = (lineLength*count);
+			if (fromIndex > len) {
+				break;
+			}
+			endIndex = fromIndex+lineLength;
+			if (endIndex >= len) {
+				comm.append(str.substring(fromIndex, len)).append("<br/>");
+				break;
+			}
+			comm.append(str.substring(fromIndex, endIndex)).append("<br/>");
+			count++;
+		}
+		return comm.toString();
+	}
+	
+	@Test
+	public void test6() {
+		readValue("dao_service_router.properties", "JTOMTOPERP_SERVER_PORT_SETTING_SERVICE_ADDRESS");
+	}
+	
+	//根据key读取value
+	 public  String readValue(String filePath,String key) {
+	  Properties props = new Properties();
+	        try {
+	         InputStream in = new BufferedInputStream (this.getClass().getClassLoader().getResourceAsStream(filePath));
+	         props.load(in);
+	         String value = props.getProperty (key);
+	            System.out.println(key+"="+value);
+	            return value;
+	        } catch (Exception e) {
+	         e.printStackTrace();
+	         return null;
+	        }
+	 }
+	
 
 	/**
 	 * 
