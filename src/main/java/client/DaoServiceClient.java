@@ -339,6 +339,21 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return checkSuccess();
 	}
 	
+	public boolean saveOrUpdateEntity(T entity) {
+		return updateEntity(Json.toJson(entity));
+	}
+	
+	public boolean saveOrUpdateEntity(Map<String,Object> properties) {
+		return updateEntity(Json.toJson(properties));
+	}
+	
+	public boolean saveOrUpdateEntity(String jsonParam) {
+		initServiceEntry(RequestMethodName.SAVE_OR_UPDATE);
+		setRequestParam(jsonParam);
+		getMapResponse();
+		return checkSuccess();
+	}
+	
 	public boolean delete(Map<String,Object> query) {
 		initServiceEntry(RequestMethodName.DELETE);
 		setRequestParam(Json.toJson(query));
@@ -555,7 +570,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 
 	public Boolean checkSuccess() {
 		if ((null != serviceResponseMap) && (null != serviceResponseMap.get("code"))
-				&& ((ResponseStatus.SUCCESS.getCode().equals(serviceResponseMap.get("code"))) || ((ResponseStatus.ERROR.equals(serviceResponseMap.get("code"))) && (null != serviceResponseMap.get("result"))))) {
+				&& ((ResponseStatus.SUCCESS.getCode().equals(serviceResponseMap.get("code"))) 
+						|| ((ResponseStatus.ERROR.equals(serviceResponseMap.get("code")))
+								&& (null != serviceResponseMap.get("result"))))) {
 			return Boolean.valueOf(true);
 		}
 
