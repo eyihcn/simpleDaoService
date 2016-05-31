@@ -1,5 +1,6 @@
 package dao;
 
+
 import java.io.Serializable;
 import java.net.URLDecoder;
 import java.util.ArrayList;
@@ -34,22 +35,18 @@ import com.mongodb.WriteResult;
 import entity.BaseEntity;
 
 /**
- * 
- * @author chenyi
- *
+ * @author eyihcn
  * @param <T>实体类型
  * @param <PK>主键类型
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
+public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 
 	@Autowired
 	private MongoTemplate mongoTemplate;
 	private Class<T> entityClass; // 实体的运行是类
 	private Class<PK> pkClass; // 实体的运行是类
-	private String collectionName;// MongoTemplate 创建的数据表的名称是类名的首字母小写
-	private String orderAscField;
-	private String orderDescField;
+	private String collectionName;// 创建的数据表的名称是类名的首字母小写
 
 	public BaseMongoDao() {
 		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
@@ -63,9 +60,9 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		collectionName = _getCollectionName();
 	}
 
-	public BaseMongoDao(Class<T> entityClass, String collectionName) {
+	public BaseMongoDao(Class<T> entityClass, Class<PK> pkClass,String collectionName) {
 		this.entityClass = entityClass;
-
+		this.pkClass = pkClass;
 		this.collectionName = collectionName;
 	}
 
@@ -76,37 +73,26 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 	public long count(Criteria criteria) {
 		return mongoTemplate.count(new Query(criteria), collectionName);
 	}
-	
-	public long count(Map<String,Object> query) {
-		Criteria criteria = getRequestRestriction(query);
-		return mongoTemplate.count(new Query(criteria), collectionName);
-	}
-
-	public List<T> find(Criteria criteria) {
-		Query query = new Query(criteria);
-		_sort(query);
-
-		return mongoTemplate.find(query, entityClass, collectionName);
-	}
 
 	public Object group(Criteria criteria, GroupBy groupBy) {
 		if (null == criteria) {
 			return mongoTemplate.group(collectionName, groupBy, entityClass);
 		}
-
 		return mongoTemplate.group(criteria, collectionName, groupBy, entityClass);
+	}
+	
+	public List<T> find(Criteria criteria) {
+		Query query = new Query(criteria);
+		return mongoTemplate.find(query, entityClass, collectionName);
 	}
 
 	public List<T> find(Criteria criteria, Integer pageSize) {
 		Query query = new Query(criteria).limit(pageSize.intValue());
-		_sort(query);
-
 		return mongoTemplate.find(query, entityClass, collectionName);
 	}
 
 	public List<T> find(Criteria criteria, Integer pageSize, Integer pageNumber) {
 		Query query = new Query(criteria).skip((pageNumber.intValue() - 1) * pageSize.intValue()).limit(pageSize.intValue());
-		_sort(query);
 		return mongoTemplate.find(query, entityClass, collectionName);
 	}
 
@@ -126,33 +112,39 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		return mongoTemplate.findById(id, entityClass, collectionName);
 	}
 
-	public Boolean checkExists(Criteria criteria) {
-		Query query = new Query(criteria).limit(1);
-		_sort(query);
-
-		return Boolean.valueOf(null != mongoTemplate.findOne(query, entityClass, collectionName));
-	}
-
 	public T findOne(Criteria criteria) {
-		Query query = new Query(criteria).limit(1);
-		_sort(query);
-
-		return mongoTemplate.findOne(query, entityClass, collectionName);
+		return mongoTemplate.findOne(new Query(criteria), entityClass, collectionName);
 	}
 
 	public T findOne(Criteria criteria, Integer skip) {
-		Query query = new Query(criteria).skip(skip.intValue()).limit(1);
-		_sort(query);
-
+		Query query = new Query(criteria).skip(skip.intValue());
 		return mongoTemplate.findOne(query, entityClass, collectionName);
 	}
 
 	public T findOne(Integer skip) {
-		Query query = new Query().skip(skip.intValue()).limit(1);
-		_sort(query);
+		Query query = new Query().skip(skip.intValue());
 		return mongoTemplate.findOne(query, entityClass, collectionName);
 	}
+	
+	public List<T> fetchCollection(Map<String, Object> requestArgs) {
+		Assert.notNull(requestArgs);
+		return mongoTemplate.find(getQueryFromQueryParam(requestArgs), entityClass, collectionName);
+	}
 
+	public T fetchRow(Map<String, Object> requestArgs) {
+		Assert.notNull(requestArgs);
+		return mongoTemplate.findOne(getQueryFromQueryParam(requestArgs), entityClass, collectionName);
+	}
+	
+	public Boolean checkExists(Criteria criteria) {
+		Query query = new Query(criteria).limit(1);
+		return Boolean.valueOf(null != mongoTemplate.findOne(query, entityClass, collectionName));
+	}
+	
+	public Boolean checkExists(Map<String, Object> requestArgs) {
+		return mongoTemplate.exists(getQueryFromQueryParam(requestArgs), collectionName);
+	}
+	
 	public Boolean delete(T object) {
 		try {
 			if (object.getId() == null) {
@@ -174,7 +166,6 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 			e.printStackTrace();
 			return Boolean.valueOf(false);
 		}
-
 		return Boolean.valueOf(true);
 	}
 	
@@ -322,7 +313,7 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		return res.get(sequence_field).toString();
 	}
 
-	private void _sort(Query query) {
+	public  void _sort(Query query,String orderAscField, String orderDescField) {
 		if (null != orderAscField) {
 			String[] fields = orderAscField.split(",");
 			for (String field : fields) {
@@ -349,22 +340,6 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 	 */
 	private String _getCollectionName() {
 		return StringUtils.uncapitalize(entityClass.getSimpleName());
-	}
-
-	public String getOrderAscField() {
-		return orderAscField;
-	}
-
-	public void setOrderAscField(String orderAscField) {
-		this.orderAscField = orderAscField;
-	}
-
-	public String getOrderDescField() {
-		return orderDescField;
-	}
-
-	public void setOrderDescField(String orderDescField) {
-		this.orderDescField = orderDescField;
 	}
 
 	private Criteria _parseRequestRestrictionOr(Map<String, Object> query) {
@@ -435,6 +410,9 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 					criterias.add(Criteria.where(key).not().in((Collection) _compareValue));
 				} else if ("$where".equals(compare)) {
 					criterias.add(Criteria.where("$where").is(_compareValue));
+				}else if ("$elemMatch".equals(compare)){
+					Criteria childCriteria = getRequestRestriction((Map<String, Object>)_compareValue);
+					criterias.add(Criteria.where(key).elemMatch(childCriteria));
 				}
 			}
 		} else {
@@ -466,38 +444,32 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 		if (!criterias.isEmpty()) {
 			allCriteria.andOperator((Criteria[]) criterias.toArray(new Criteria[criterias.size()]));
 		}
-
 		return allCriteria;
 	}
 
-	public List<T> fetchCollection(Map<String, Object> requestArgs) {
-		Criteria criteria = getRequestRestriction((HashMap) requestArgs.get("query"));
-		String sortField = CommonDaoHelper.getRequestSortField(requestArgs);
-		String sortDirection = CommonDaoHelper.getRequestSortDirection(requestArgs);
-		Integer pageSize = CommonDaoHelper.getRequestPageSize(requestArgs);
-		Integer pageNumber = CommonDaoHelper.getRequestPageNumber(requestArgs);
-
+	public Query getQueryFromQueryParam(Map<String, Object> queryParam) {
+		// 无参 ，默认是{}
+		Criteria criteria = getRequestRestriction((HashMap) queryParam.get("query"));
+		// 无参 ，默认是id
+		String sortField = CommonDaoHelper.getRequestSortField(queryParam);
+		// 无参 ，默认是-1
+		String sortDirection = CommonDaoHelper.getRequestSortDirection(queryParam);
+		// 无参 ，默认是5000
+		Integer pageSize = CommonDaoHelper.getRequestPageSize(queryParam);
+		// 无参 ，默认是1
+		Integer pageNumber = CommonDaoHelper.getRequestPageNumber(queryParam);
+		Query query = new Query(criteria).skip((pageNumber.intValue() - 1) * pageSize.intValue()).limit(pageSize.intValue());
 		if ("-1".equals(sortDirection)) {
-			setOrderDescField(sortField);
-			setOrderAscField(null);
+			_sort(query, null, sortField);
 		} else {
-			setOrderAscField(sortField);
-			setOrderDescField(null);
+			_sort(query, sortField, null);
 		}
-
-		return find(criteria, pageSize, pageNumber);
+		return query;
 	}
-
+	
 	public Long fetchCollectionCount(Map<String, Object> requestArgs) {
 		Criteria criteria = getRequestRestriction((HashMap<String, Object>) requestArgs.get("query"));
-
 		return Long.valueOf(count(criteria));
-	}
-
-	public T fetchRow(Map<String, Object> requestArgs) {
-		Criteria criteria = getRequestRestriction((Map<String, Object>) requestArgs.get("query"));
-
-		return findOne(criteria);
 	}
 
 	public Boolean batchUpdate(Map<String, Object> requestArgs) {
@@ -594,6 +566,4 @@ public abstract class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializ
 	public void setPkClass(Class<PK> pkClass) {
 		this.pkClass = pkClass;
 	}
-
-	
 }

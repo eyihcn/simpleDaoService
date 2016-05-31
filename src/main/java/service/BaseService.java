@@ -181,10 +181,10 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 
 	@RequestMapping(value=COUNTS, method=RequestMethod.POST)
     @ResponseBody
-	public ServiceResponse countsWishToBePublished(@RequestBody Map<String, Object> request) {
+	public ServiceResponse counts(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(counts(request));
+			serviceResponse.setResult(daoFindCollectionCount(request));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -215,5 +215,4 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	
 	public abstract boolean daoDelete(Map<String, Object> request);
 	
-	public abstract Long counts(Map<String, Object> request);
 }

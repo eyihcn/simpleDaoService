@@ -86,15 +86,4 @@ public abstract class CRUDService<T extends BaseEntity<PK>, PK extends Serializa
 		return commonDao.delete(query);
 	}
 	
-	
-	@SuppressWarnings("unchecked")
-	@Override
-	public Long counts(Map<String, Object> request) {
-		Map<String,Object> query = (Map<String, Object>) request.get("query");
-		if (query == null) {
-			return commonDao.count();
-		}
-		return commonDao.count(query);
-	}
-
 }
