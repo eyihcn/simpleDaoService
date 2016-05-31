@@ -8,10 +8,14 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.junit.Test;
@@ -92,6 +96,7 @@ public final class MyBeanUtils {
 			Class<?> classType = clazz;
 			Field[] fs = classType.getDeclaredFields(); // 得到所有的fields
 			for (Field f : fs) {
+				f.setAccessible(true);
 				String fieldName = f.getName();
 				Object fieldValue = properties.get(fieldName);
 				if (null == fieldValue) {
@@ -103,18 +108,28 @@ public final class MyBeanUtils {
 					BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
 					continue;
 				}
-				// 【2】 关键的地方，如果是List类型，得到其Generic的类型
+				// 【2】若为自定义的orm // com.tomtop.application.orm
+				if (isSelfDesignOrm(fieldClazz,ormPackageNames)) {
+					BeanUtils.setProperty(entity, fieldName, _mapToEntity(fieldClazz, (Map<String, Object>) properties.get(fieldName), ormPackageNames));
+					continue;
+				}
+				// 【3】 如果是List类型，得到其Generic的类型
 				if (Collection.class.isAssignableFrom(fieldClazz)) {
 					Type fc = f.getGenericType(); 
 					if (fc == null) {
 						continue;
 					}
-					// 【3】如果是泛型参数的类型
+					// 如果是泛型参数的类型
 					if (fc instanceof ParameterizedType) {
 						ParameterizedType pt = (ParameterizedType) fc;
 						// 暂时把多层嵌套的泛型，当作基本类型处理
 						Type type = pt.getActualTypeArguments()[0];
 						if (type instanceof ParameterizedType) {
+							BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
+							continue;
+						}
+						Class genericClazz = (Class) pt.getActualTypeArguments()[0];
+						if (!isSelfDesignOrm(genericClazz,ormPackageNames)) { 
 							BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
 							continue;
 						}
@@ -124,11 +139,6 @@ public final class MyBeanUtils {
 						}else {
 							col = new HashSet();
 						}
-						Class genericClazz = (Class) pt.getActualTypeArguments()[0];
-						if (!isSelfDesignOrm(genericClazz,ormPackageNames)) { 
-							BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
-							continue;
-						}
 						// 若List的元素为自定义的orm，应该做递归处理
 						Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) properties.get(fieldName);
 						for (Map entityMap : listMap) {
@@ -136,13 +146,42 @@ public final class MyBeanUtils {
 						}
 						BeanUtils.setProperty(entity, fieldName, col);
 					}
+					// 泛型擦除暂不处理
 					continue;
 				}
-				// 若为自定义的orm // com.tomtop.application.orm
-				if (isSelfDesignOrm(fieldClazz,ormPackageNames)) {
-					BeanUtils.setProperty(entity, fieldName, _mapToEntity(fieldClazz, (Map<String, Object>) properties.get(fieldName), ormPackageNames));
+				if (Map.class.isAssignableFrom(fieldClazz)) {
+					Type fc = f.getGenericType(); 
+					if (fc == null) {
+						continue;
+					}
+					// 暂时把多层嵌套的泛型，当作基本类型处理
+					ParameterizedType pt = (ParameterizedType) fc;
+					Type type = pt.getActualTypeArguments()[0];
+					if (type instanceof ParameterizedType) {
+						BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
+						continue;
+					}
+					Class genericClazz = (Class) pt.getActualTypeArguments()[0];
+					if (!isSelfDesignOrm(genericClazz,ormPackageNames)) { 
+						BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
+						continue;
+					}
+					Map map = null;
+					if (HashMap.class.isAssignableFrom(fieldClazz)){
+						map = new HashMap();
+					}else if (LinkedHashMap.class.isAssignableFrom(fieldClazz)){
+						map = new LinkedHashMap();
+					}else if (TreeMap.class.isAssignableFrom(fieldClazz)){
+						map = new TreeMap();
+					}else if (Hashtable.class.isAssignableFrom(fieldClazz)) {
+						map = new Hashtable();
+					}else {
+						map = new HashMap();
+					}
+					
 					continue;
 				}
+				// 暂时不处理Map中的orm情况
 				BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
 			}
 			
