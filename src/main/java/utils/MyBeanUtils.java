@@ -103,8 +103,9 @@ public final class MyBeanUtils {
 					continue;
 				}
 				Class fieldClazz = f.getType(); // 得到field的class及类型全路径
-				// 【1】 //判断是否为基本类型 或者 lang包中的类型
-				if (fieldClazz.isPrimitive() || fieldClazz.getName().startsWith("java.lang")) {
+				// 【1】 //判断是否为基本类型 或者 lang包中的类型 或者 日期类型
+				if (fieldClazz.isPrimitive() || fieldClazz.getName().startsWith("java.lang")
+						||java.util.Date.class.isAssignableFrom(fieldClazz) || java.sql.Date.class.isAssignableFrom(fieldClazz)) {
 					BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
 					continue;
 				}
@@ -115,36 +116,51 @@ public final class MyBeanUtils {
 				}
 				// 【3】 如果是List类型，得到其Generic的类型
 				if (Collection.class.isAssignableFrom(fieldClazz)) {
-					Type fc = f.getGenericType(); 
-					if (fc == null) {
+					Type fGenericType = f.getGenericType(); 
+					if (fGenericType == null) {
 						continue;
 					}
 					// 如果是泛型参数的类型
-					if (fc instanceof ParameterizedType) {
-						ParameterizedType pt = (ParameterizedType) fc;
-						// 暂时把多层嵌套的泛型，当作基本类型处理
+					if (fGenericType instanceof ParameterizedType) {
+						handleCollectionAndMap(fGenericType,entity,fieldClazz,fieldName,properties,ormPackageNames);
+						/*ParameterizedType pt = (ParameterizedType) fGenericType;
 						Type type = pt.getActualTypeArguments()[0];
+						// 暂时把多层嵌套的泛型，当作基本类型处理
 						if (type instanceof ParameterizedType) {
+							Type t2 = ((ParameterizedType) type).getRawType();
+							Type[] acType = ((ParameterizedType) type).getActualTypeArguments();
+							if (t2 instanceof Class) {
+								Class rowType = (Class) t2;
+								if (Map.class.isAssignableFrom(rowType)) {
+									Map rowTypeMap = new HashMap();
+								}
+							}
+//							System.out.println(t2.);
 							BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
 							continue;
-						}
-						Class genericClazz = (Class) pt.getActualTypeArguments()[0];
-						if (!isSelfDesignOrm(genericClazz,ormPackageNames)) { 
-							BeanUtils.setProperty(entity, fieldName, properties.get(fieldName));
-							continue;
-						}
-						Collection col = null;
-						if (List.class.isAssignableFrom(fieldClazz)){
-							col= new ArrayList();
-						}else {
-							col = new HashSet();
-						}
-						// 若List的元素为自定义的orm，应该做递归处理
-						Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) properties.get(fieldName);
-						for (Map entityMap : listMap) {
-							col.add(_mapToEntity(genericClazz, entityMap, ormPackageNames));
-						}
-						BeanUtils.setProperty(entity, fieldName, col);
+						}else { // Class 到达最内层的参数
+							Collection col = null;
+							if (List.class.isAssignableFrom(fieldClazz)){
+								col= new ArrayList();
+							}else {
+								col = new HashSet();
+							}
+							Class genericClazz = (Class) pt.getActualTypeArguments()[0];
+							if (!isSelfDesignOrm(genericClazz,ormPackageNames)) {
+								// 基本类型直接可以用BeanUtils.setProperty,
+								// 但json字符串bean转换为Map的过程中,javaBean中List 和 Set 都会用ArrayList封装
+								// 所以要自己转换一下，否则报错tpye mismatch，妈蛋~~
+								col.addAll((Collection) properties.get(fieldName));
+								BeanUtils.setProperty(entity, fieldName, col);
+								continue;
+							}
+							// 若List的元素为自定义的orm，应该做递归处理
+							Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) properties.get(fieldName);
+							for (Map entityMap : listMap) {
+								col.add(_mapToEntity(genericClazz, entityMap, ormPackageNames));
+							}
+							BeanUtils.setProperty(entity, fieldName, col);
+						}*/
 					}
 					// 泛型擦除暂不处理
 					continue;
@@ -190,6 +206,49 @@ public final class MyBeanUtils {
 		}
 		return entity;
 	}
+	
+	private static <T> void handleCollectionAndMap(Type fGenericType ,T entity,Class<?> fieldClazz ,String fieldName,Map<String, Object> properties, String... ormPackageNames) throws Exception {
+		
+
+		ParameterizedType pt = (ParameterizedType) fGenericType;
+		Type type = pt.getActualTypeArguments()[0];
+		// 暂时把多层嵌套的泛型，当作基本类型处理
+		if (type instanceof ParameterizedType) {
+			Type t2 = ((ParameterizedType) type).getRawType();
+			Type[] acType = ((ParameterizedType) type).getActualTypeArguments();
+			if (t2 instanceof Class) {
+				Class rowType = (Class) t2;
+				if (Map.class.isAssignableFrom(rowType)) {
+					Map rowTypeMap = new HashMap();
+				}else {
+					
+				}
+			}
+		}else { // Class 到达最内层的泛型参数
+			Collection col = null;
+			if (List.class.isAssignableFrom(fieldClazz)){
+				col= new ArrayList();
+			}else {
+				col = new HashSet();
+			}
+			Class genericClazz = (Class) pt.getActualTypeArguments()[0];
+			if (!isSelfDesignOrm(genericClazz,ormPackageNames)) {
+				// 基本类型直接可以用BeanUtils.setProperty,
+				// 但json字符串bean转换为Map的过程中,javaBean中List 和 Set 都会用ArrayList封装
+				// 所以要自己转换一下，否则报错tpye mismatch，妈蛋~~
+				col.addAll((Collection) properties.get(fieldName));
+				BeanUtils.setProperty(entity, fieldName, col);
+			}
+			// 若List的元素为自定义的orm，应该做递归处理
+			Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) properties.get(fieldName);
+			for (Map entityMap : listMap) {
+				col.add(_mapToEntity(genericClazz, entityMap, ormPackageNames));
+			}
+			BeanUtils.setProperty(entity, fieldName, col);
+		}
+	
+	}
+	
 	
 	/**
 	 * 先判断包名是否以系统自定义的orm包的前缀，若是直接返回true， 否则在判断是否包含在自己提供的orm包名内
