@@ -17,6 +17,16 @@ public class ComplicatedBean {
 	private Map<String,Set<User>> goupToUsers; // great
 	private Map<String, List<Map<String, User>>> goupToUsers2;// great
 	
+	private List rm ; // 泛型擦除
+	//通配类型，不考虑
+	public List getRm() {
+		return rm;
+	}
+
+	public void setRm(List rm) {
+		this.rm = rm;
+	}
+
 	public Map<String, List<Map<String, User>>> getGoupToUsers2() {
 		return goupToUsers2;
 	}
