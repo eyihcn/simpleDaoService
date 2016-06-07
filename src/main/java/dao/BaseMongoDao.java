@@ -24,7 +24,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.util.Assert;
 
 import utils.CommonDaoHelper;
-import utils.GenericsUtils;
+import utils.MyBeanUtils;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
@@ -40,7 +40,8 @@ import entity.BaseEntity;
  * @param <PK>主键类型
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
+public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > implements CommonDaoInter<T, PK>
+{
 
 	@Autowired
 	private MongoTemplate mongoTemplate;
@@ -49,8 +50,8 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 	private String collectionName;// 创建的数据表的名称是类名的首字母小写
 
 	public BaseMongoDao() {
-		this.entityClass = GenericsUtils.getSuperClassGenericType(this.getClass());
-		this.pkClass = 	GenericsUtils.getSuperClassGenericType(this.getClass(), 1);
+		this.entityClass = MyBeanUtils.getSuperClassGenericType(this.getClass());
+		this.pkClass = 	MyBeanUtils.getSuperClassGenericType(this.getClass(), 1);
 		this.collectionName = _getCollectionName();
 	}
 
@@ -66,14 +67,14 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 		this.collectionName = collectionName;
 	}
 
-	public long count() {
-		return mongoTemplate.count(new Query(), collectionName);
+	public long count(Map<String,Object> query) {
+		return count(getRequestRestriction(query));
 	}
 
 	public long count(Criteria criteria) {
 		return mongoTemplate.count(new Query(criteria), collectionName);
 	}
-
+	
 	public Object group(Criteria criteria, GroupBy groupBy) {
 		if (null == criteria) {
 			return mongoTemplate.group(collectionName, groupBy, entityClass);
@@ -126,22 +127,22 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 		return mongoTemplate.findOne(query, entityClass, collectionName);
 	}
 	
-	public List<T> fetchCollection(Map<String, Object> requestArgs) {
+	public List<T> findCollection(Map<String, Object> requestArgs) {
 		Assert.notNull(requestArgs);
 		return mongoTemplate.find(getQueryFromQueryParam(requestArgs), entityClass, collectionName);
 	}
 
-	public T fetchRow(Map<String, Object> requestArgs) {
+	public T findOne(Map<String, Object> requestArgs) {
 		Assert.notNull(requestArgs);
 		return mongoTemplate.findOne(getQueryFromQueryParam(requestArgs), entityClass, collectionName);
 	}
 	
-	public Boolean checkExists(Criteria criteria) {
+	public boolean checkExists(Criteria criteria) {
 		Query query = new Query(criteria).limit(1);
-		return Boolean.valueOf(null != mongoTemplate.findOne(query, entityClass, collectionName));
+		return null != mongoTemplate.findOne(query, entityClass, collectionName);
 	}
 	
-	public Boolean checkExists(Map<String, Object> requestArgs) {
+	public boolean checkExists(Map<String, Object> requestArgs) {
 		return mongoTemplate.exists(getQueryFromQueryParam(requestArgs), collectionName);
 	}
 	
@@ -169,13 +170,13 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 		return Boolean.valueOf(true);
 	}
 	
-	public Boolean delete(Map<String,Object> query) {
+	public boolean delete(Map<String,Object> query) {
 		Assert.notNull(query);
 		return delete(getRequestRestriction(query));
 	}
 
 
-	public Boolean deleteById(PK id) {
+	public boolean deleteById(PK id) {
 		T object = findById(id);
 		if (null == object) {
 			return Boolean.valueOf(false);
@@ -193,7 +194,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 	 * @param properties
 	 * @return
 	 */
-	public Boolean saveOrUpdate(Map<String, Object> properties) {
+	public boolean saveOrUpdate(Map<String, Object> properties) {
 		try {
 			T object = getEntityClass().newInstance();
 			BeanUtils.populate(object, properties);
@@ -211,7 +212,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 	 * @param entity
 	 * @return
 	 */
-	public Boolean saveOrUpdate(T entity) {
+	public boolean saveOrUpdate(T entity) {
 		try {
 			if (null == entity.getId()) {
 				entity.setId(pkClass.getConstructor(String.class).newInstance(getNextId()));
@@ -231,11 +232,11 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 	 * @param updateParam
 	 * @return
 	 */
-	public Boolean update(Map<String, Object> updateParam) {
+	public boolean update(Map<String, Object> updateParam) {
 		Assert.notEmpty(updateParam, "updateParam can not be empty");
 		Object id = updateParam.get("id");
 		if (null == id) {
-			return Boolean.valueOf(false);
+			return false;
 		}
 		try {
 			Update update = new Update();
@@ -257,10 +258,10 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 		} catch (Exception e) {
 			e.printStackTrace();
 
-			return Boolean.valueOf(false);
+			return false;
 		}
 
-		return Boolean.valueOf(true);
+		return true;
 	}
 
 	/**
@@ -268,7 +269,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 	 * @param properties 属性值Map
 	 * @return
 	 */
-	public Boolean save(Map<String, Object> properties) {
+	public boolean save(Map<String, Object> properties) {
 		try {
 			properties.remove("id");
 			properties.remove("_id");
@@ -282,7 +283,17 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 		return Boolean.valueOf(true);
 	}
 
-	public Boolean insert(Collection<T> batchToSave) {
+	public boolean save(T entity) {
+		entity.setId(null);
+		return saveOrUpdate(entity);
+	}
+
+	public boolean update(T entity) {
+		Assert.notNull(entity.getId());
+		return saveOrUpdate(entity);
+	}
+	
+	public boolean insert(Collection<T> batchToSave) {
 		try {
 			mongoTemplate.insert(batchToSave, collectionName);
 		} catch (Exception e) {
@@ -467,7 +478,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 		return query;
 	}
 	
-	public Long fetchCollectionCount(Map<String, Object> requestArgs) {
+	public Long findCollectionCount(Map<String, Object> requestArgs) {
 		Criteria criteria = getRequestRestriction((HashMap<String, Object>) requestArgs.get("query"));
 		return Long.valueOf(count(criteria));
 	}
@@ -566,4 +577,5 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> {
 	public void setPkClass(Class<PK> pkClass) {
 		this.pkClass = pkClass;
 	}
+
 }

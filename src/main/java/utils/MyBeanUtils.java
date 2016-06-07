@@ -3,6 +3,7 @@ package utils;
 import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -30,6 +31,86 @@ import test.User;
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public final class MyBeanUtils {
 	
+	
+	public static Class getSuperClassGenericType(Class clazz, int index) {
+		Type genType = clazz.getGenericSuperclass();// 得到泛型父类
+		// 如果没有实现ParameterizedType接口，即不支持泛型，直接返回Object.class
+		if (!(genType instanceof ParameterizedType)) {
+			return Object.class;
+		}
+		// 返回表示此类型实际类型参数的Type对象的数组,数组里放的都是对应类型的Class, 如BuyerServiceBean extends
+		// DaoSupport就返回Buyer和Contact类型
+		Type[] parameters = ((ParameterizedType) genType).getActualTypeArguments();
+		if (index > parameters.length || index < 0) {
+			throw new RuntimeException("你输入的索引号" + (index < 0 ? "不能小于0" : "超出了参数的总数"));
+		}
+		if (!(parameters[index] instanceof Class)) {
+			return Object.class;
+		}
+		return (Class) parameters[index];
+	}
+
+	public static Class getSuperClassGenericType(Class clazz) {
+		return getSuperClassGenericType(clazz, 0);
+	}
+
+	public static Class getMethodGenericReturnType(Method method, int index) {
+		Type returnType = method.getGenericReturnType();
+		if (returnType instanceof ParameterizedType) {
+			ParameterizedType type = (ParameterizedType) returnType;
+			Type[] typeArguments = type.getActualTypeArguments();
+			if (index >= typeArguments.length || index < 0) {
+				throw new RuntimeException("你输入的索引" + (index < 0 ? "不能小于0" : "超出了参数的总数"));
+			}
+			return (Class) typeArguments[index];
+		}
+		return Object.class;
+	}
+
+	public static Class getMethodGenericReturnType(Method method) {
+		return getMethodGenericReturnType(method, 0);
+	}
+
+	public static List getMethodGenericParameterTypes(Method method, int index) {
+		List results = new ArrayList();
+		Type[] genericParameterTypes = method.getGenericParameterTypes();
+		if (index > genericParameterTypes.length || index < 0) {
+			throw new RuntimeException("你输入的索引" + (index < 0 ? "不能小于0" : "超出了参数的总数"));
+		}
+		Type genericParamenterType = genericParameterTypes[index];
+		if (genericParamenterType instanceof ParameterizedType) {
+			ParameterizedType aType = (ParameterizedType) genericParamenterType;
+			Type[] parameterArgTypes = aType.getActualTypeArguments();
+			for (Type parameterArgType : parameterArgTypes) {
+				Class parameterArgClass = (Class) parameterArgType;
+				results.add(parameterArgClass);
+			}
+			return results;
+		}
+		return results;
+	}
+
+	public static List getMethodGenericParameterTypes(Method method) {
+		return getMethodGenericParameterTypes(method, 0);
+	}
+
+	public static Class getFieldGenericType(Field field, int index) {
+		Type genericFileType = field.getGenericType();
+		if (genericFileType instanceof ParameterizedType) {
+			ParameterizedType aType = (ParameterizedType) genericFileType;
+			Type[] fieldArgTypes = aType.getActualTypeArguments();
+			if (index > fieldArgTypes.length || index < 0) {
+				throw new RuntimeException("你输入的索引" + (index < 0 ? "不能小于0" : "超出了参数的总数"));
+			}
+			return (Class) fieldArgTypes[index];
+		}
+		return Object.class;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Class getFieldGenericType(Field field) {
+		return getFieldGenericType(field, 0);
+	}
 	
 	/**
 	 * 字符串过长换行显示
@@ -86,6 +167,14 @@ public final class MyBeanUtils {
 	        }
 	 }
 	
+	 
+	 public static <T> List<T> _mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
+			List<T> entities = new ArrayList<T>();
+			for (Map<String,Object> properties: propertiesCol) {
+				entities.add(_mapToEntity(clazz, properties, ormPackageNames));
+			}
+			return entities;
+		}
 
 	/**
 	 * 
@@ -392,51 +481,15 @@ public final class MyBeanUtils {
 	
 	@Test
 	public void testMapToBean() {
-		ComplicatedBean complicateBean =new ComplicatedBean();
 		
-//		List <Map<String,Integer>> nums = new ArrayList<Map<String,Integer>>();
-//		Map<String,Integer> m1 = new HashMap<String, Integer>();
-//		m1.put("m1", 1);
-//		nums.add(m1);
-//		complicateBean.setNums(nums);
-//		Set<Long> s1 = new HashSet<Long>();
-//		s1.add(1L);
-//		complicateBean.setLnums(s1);
-//		Map<String,String> map1 =new HashMap<String, String>();
-//		map1.put("map1", "map1");
-//		complicateBean.setMap1(map1);
-//	
-//		Map<Integer,String> map2 =new HashMap<Integer, String>();
-//		map2.put(2, "map2");
-//		complicateBean.setMap2(map2);
-//		
-//		Map<String,Long> comin = new HashMap<String, Long>();
-//		comin.put("comin1", 1L);
-//		comin.put("comin2", 1L);
-//		comin.put("comin3", 1L);
-//		
-//		Map<String,Long> comin2 = new HashMap<String, Long>();
-//		comin2.put("comin1", 1L);
-//		comin2.put("comin2", 1L);
-//		comin2.put("comin3", 1L);
-//		List<Map<String,Long>> comList = new ArrayList<Map<String,Long>>();
-//		comList.add(comin);
-//		comList.add(comin2);
-//		Map<String, List<Map<String, Long>>> compMap = new HashMap<String, List<Map<String,Long>>>();
-//		compMap.put("compMap", comList);
-//		complicateBean.setComPmap(compMap);
 		Set<User> users = new HashSet<User>();
-//		complicateBean.setUsers(users);
 		users.add(new User("eyihcn",new Date()));
 		users.add(new User("chenyi",new Date()));
 		users.add(new User("cnheyi",new Date()));
-		Map<String,Object> ben = new HashMap<String, Object>();
-//		ben.put("users", users);
 		Map<String,User> nameToUser =new HashMap<String, User>();
 		nameToUser.put("me", new User("eyihcn",new Date()));
 		nameToUser.put("i", new User("cnheyi",new Date()));
 		nameToUser.put("my", new User("iyehcn",new Date()));
-//		ben.put("nameToUser", nameToUser);
 		
 		Map<String,Set<User>> goupToUsers = new HashMap<String, Set<User>>();
 		goupToUsers.put("G1", users);
@@ -444,30 +497,31 @@ public final class MyBeanUtils {
 		Map<String, List<Map<String, User>>> goupToUsers2 = new HashMap<String, List<Map<String,User>>>();
 		List<Map<String, User>> ll = new ArrayList<Map<String,User>>();
 		ll.add(nameToUser);
+		
 		goupToUsers2.put("goupToUsers2", ll);
 		
-//		ben.put("goupToUsers", goupToUsers);
-//		ben.put("goupToUsers2", goupToUsers2);
-//		String json = Json.toJson(complicateBean);
+		
 		List<String> strList = new ArrayList<String>();
 		strList.add("eyihcn");
-		ben.put("rm", strList);
 		
+		Map<String,Object> ben = new HashMap<String, Object>();
+		ben.put("nameToUser", nameToUser);
+		ben.put("goupToUsers", goupToUsers);
+		ben.put("goupToUsers2", goupToUsers2);
+		ben.put("rm", strList);
+
 		String json = Json.toJson(ben);
 		System.out.println("json =====>"+json);
 		Map<String,Object> properties = Json.fromJson(json, Map.class);
-//		System.out.println("properties===>"+properties);
-//		ComplicateBean bean = MyBeanUtils._mapToEntity(ComplicateBean.class, properties, "test");
+		System.out.println("properties===>"+properties);
 		ComplicatedBean bean = MyBeanUtils._mapToEntity(ComplicatedBean.class, properties, "test");
-//		System.out.println(bean.getLnums());
-//		System.out.println(bean.getMap1());
-//		System.out.println(bean.getMap2());
-//		System.out.println(bean.getComPmap());
-		System.out.println(bean.getUsers());
+		
 		System.out.println(bean.getNameToUser());
 		System.out.println(bean.getGoupToUsers());
 		System.out.println(bean.getGoupToUsers2());
 		System.out.println(bean.getRm());
 		
 	}
+	
+	
 }

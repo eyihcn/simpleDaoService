@@ -191,7 +191,7 @@ public class DaoServiceTestUnit {
 	
 	@Test
 	public void testBaseDao_fetchCollectionCount() {
-		System.out.println(productDao.fetchCollectionCount(new HashMap()));
+		System.out.println(productDao.findCollectionCount(new HashMap()));
 	}
 	
 	@Test
@@ -216,7 +216,7 @@ public class DaoServiceTestUnit {
 		requestArgs.put("query", query);
 		query.put("unitPrice", 13);
 		query.put("id", 2);
-		System.out.println(productDao.fetchRow(requestArgs));
+		System.out.println(productDao.findOne(requestArgs));
 	}
 	
 	
