@@ -157,7 +157,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	@RequestMapping(value = DELETE_BY_ID, method = RequestMethod.POST)
 	@ResponseBody
 //	public ServiceResponse delete(@RequestBody PK id) {
-	public ServiceResponse delete(@RequestBody Long id) {
+	public ServiceResponse deleteById(@RequestBody Long id) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			if (!commonDaoInter.deleteById((PK) id)) {

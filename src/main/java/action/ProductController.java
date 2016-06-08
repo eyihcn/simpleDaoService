@@ -16,7 +16,7 @@ public class ProductController extends BaseService<Product, Long> {
 	@Autowired()
 	@Qualifier("productDao")
 	public void setCommonDaoInter(ProductDao productDao) {
-		super.setCommonDaoInter(commonDaoInter);
+		super.setCommonDaoInter(productDao);
 	}
 	
 }

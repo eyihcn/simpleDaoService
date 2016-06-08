@@ -67,6 +67,10 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		this.collectionName = collectionName;
 	}
 
+	public long count() {
+		return count(new HashMap<String, Object>());
+	}
+
 	public long count(Map<String,Object> query) {
 		return count(getRequestRestriction(query));
 	}
@@ -160,14 +164,14 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return Boolean.valueOf(true);
 	}
 
-	public Boolean delete(Criteria criteria) {
+	public boolean delete(Criteria criteria) {
 		try {
-			mongoTemplate.remove(new Query(criteria), this.entityClass, collectionName);
+			WriteResult writeResult = mongoTemplate.remove(new Query(criteria), this.entityClass, collectionName);
+			return writeResult.getN()>0?true:false;
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Boolean.valueOf(false);
+			return false;
 		}
-		return Boolean.valueOf(true);
 	}
 	
 	public boolean delete(Map<String,Object> query) {

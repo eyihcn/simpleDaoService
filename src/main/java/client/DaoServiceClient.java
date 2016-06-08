@@ -277,6 +277,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		} else {
 			map = getCollection(query);
 		}
+		map.put(COLLECTION, _mapToEntity(entityClass,(Collection<Map<String, Object>>)map.get(COLLECTION), ormPackageNames));
 		return map;
 	}
 

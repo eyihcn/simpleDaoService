@@ -58,7 +58,7 @@ public class DaoServiceTestUnit {
 	
 	@Test
 	public void testServiceClient_DeleteById() {
-		System.out.println(client.deleteEntityById(7L));
+		System.out.println(client.deleteEntityById(1L));
 	}
 	
 	@Test
@@ -106,7 +106,7 @@ public class DaoServiceTestUnit {
 	public void testCrudService_Update() {
 		
 		String requestUrl = url+"sale/Product/findById";
-		String jsonParam = "6";
+		String jsonParam = "2";
 		System.out.println(jsonParam);
 
 		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
@@ -131,10 +131,7 @@ public class DaoServiceTestUnit {
 	public void testCrudService_findOne() {
 		
 		String requestUrl = url+"sale/Product/findOne";
-		String jsonParam = "7";
-		Map<String,Object> query = new HashMap<String, Object>();
-		query.put("id", 7);
-		jsonParam = Json.toJson(query);
+		String jsonParam = "2";
 		System.out.println(jsonParam);
 		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
 		ServiceResponse serviceResponse  = restTemplate.postForObject(requestUrl , httpEntity, ServiceResponse.class, new Object[0]);
@@ -146,7 +143,7 @@ public class DaoServiceTestUnit {
 	public void testCrudService_findById() {
 		
 		String requestUrl = url+"sale/Product/findById";
-		String jsonParam = "7";
+		String jsonParam = "1";
 		System.out.println(jsonParam);
 		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
 		ServiceResponse serviceResponse  = restTemplate.postForObject(requestUrl , httpEntity, ServiceResponse.class, new Object[0]);
@@ -157,7 +154,6 @@ public class DaoServiceTestUnit {
 	
 	@Test
 	public void testCrudService_Save() {
-		
 		String requestUrl = url+"sale/Product/save";
 		String jsonParam = "{}";
 		Product product =new Product();
