@@ -24,6 +24,7 @@ import java.util.TreeSet;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.MapUtils;
 import org.junit.Test;
+import org.springframework.util.Assert;
 
 import test.ComplicatedBean;
 import test.User;
@@ -381,13 +382,15 @@ public final class MyBeanUtils {
 	 * @return true:是自定义orm false:不是自定义orm
 	 */
 	public static boolean isSelfDesignOrm(Class<?> clazz, String... ormPackageNames) {
-		if (null == ormPackageNames || ormPackageNames.length == 0) {
-			return clazz.getPackage().getName().startsWith("com.tomtop.application.orm");
-		}
+		Assert.notNull(clazz);
 		if (clazz.getPackage().getName().startsWith("com.tomtop.application.orm")) {
 			return true;
 		}
+		if (null == ormPackageNames || ormPackageNames.length == 0) {
+			return false;
+		}
 		return Arrays.asList(ormPackageNames).contains(clazz.getPackage().getName());
+		
 	}
 	
 	@Test
