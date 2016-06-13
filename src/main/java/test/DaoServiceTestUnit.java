@@ -16,7 +16,7 @@ import org.springframework.web.client.RestTemplate;
 
 import service.ServiceResponse;
 import utils.Json;
-import utils.MyBeanUtils;
+import utils.MyBeanUtil;
 import client.ProductServiceClient;
 import dao.ProductDao;
 import entity.Product;
@@ -115,7 +115,7 @@ public class DaoServiceTestUnit {
 		
 //		ServiceResponse serviceResponse = MyBeanUtils._mapToEntity(ServiceResponse.class, properties, "entity");
 //		Product pr = (Product) serviceResponse.getResult();
-		Product pr = MyBeanUtils._mapToEntity(Product.class, result, "entity");
+		Product pr = MyBeanUtil._mapToEntity(Product.class, result, "entity");
 		pr.setName("pro-1-c");
 		pr.setUnitPrice(7.7);
 		requestUrl = url+"sale/Product/update";
