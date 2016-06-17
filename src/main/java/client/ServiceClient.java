@@ -167,7 +167,7 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	private String initServiceEntry(String methodName) {
 		String serviceEntry = new StringBuilder(SEPARATOR).append(modelName ).append( SEPARATOR )
 				.append( entityClassName ).append( SEPARATOR ).append(methodName).toString();
-		this.serviceEntry = serviceEntry;
+//		this.serviceEntry = serviceEntry;
 		return serviceEntry;
 	}
 	
