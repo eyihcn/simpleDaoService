@@ -66,7 +66,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private int timeOut = -1;
 
 	public DaoServiceClient() {
-		initRquestHostAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+		initRquestHostAndToken_2(this.getClass().getAnnotation(ServiceCode.class).value());
 		ModelName modelNameClass = this.getClass().getAnnotation(ModelName.class);
 		if (modelNameClass != null) {
 			this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());

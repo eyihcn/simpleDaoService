@@ -470,13 +470,12 @@ public final class MyBeanUtil {
 	 * @return true:是自定义orm false:不是自定义orm
 	 */
 	public static boolean isSelfDesignOrm(Class<?> clazz, String... ormPackageNames) {
-		if (null == ormPackageNames || ormPackageNames.length == 0) {
-			return clazz.getPackage().getName().startsWith("com.tomtop.application.orm");
-		}
-		if (clazz.getPackage().getName().startsWith("com.tomtop.application.orm")) {
+		List<String> packages  = Arrays.asList("com.tomtop.application.orm");
+		String clazzPackage = clazz.getPackage().getName();
+		if (packages.contains(clazzPackage)) {
 			return true;
 		}
-		return Arrays.asList(ormPackageNames).contains(clazz.getPackage().getName());
+		return (null == ormPackageNames ? false: Arrays.asList(ormPackageNames).contains(clazzPackage));
 	}
 	
 	@Test
