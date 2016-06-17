@@ -8,6 +8,6 @@ import entity.Product;
 @Scope("prototype")
 @ServiceCode("EYICH")
 @ModelName("sale")
-public class ProductServiceClient extends DaoServiceClient<Product, Long>{
+public class ProductServiceClient extends ServiceClient<Product, Long>{
 
 }

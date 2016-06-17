@@ -4,14 +4,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import entity.ServerPortSetting;
-
+@ServiceCode("SERVER_PORT_SETTING")
 @Component
-@Scope("prototype")
-public class ServerSettingService extends DaoServiceClient<ServerPortSetting, Integer> {
+public class ServerSettingService extends ServiceClient<ServerPortSetting, Integer> {
 	// ServerPortSetting.class
 	private final String CREATE_SERVER_PORT_SETTING_ENTRY = "/serverSetting/createServerPortSetting";
 	private final String DELETE_SERVER_PORT_SETTING_ENTRY = "/serverSetting/deleteServerPortSetting";
@@ -20,11 +18,6 @@ public class ServerSettingService extends DaoServiceClient<ServerPortSetting, In
 	private final String QUERY_SERVER_PORT_SETTING_ENTRY = "/serverSetting/queryServerPortSetting";
 	private final String QUERY_SERVER_PORT_SETTINGS_ENTRY = "/serverSetting/queryServerPortSettings";
 	private final String FETCH_SERVER_PORT_SETTING_COLLECTION_ENTRY = "/serverSetting/fetchServerPortSettingCollection";
-
-	@Override
-	protected String initServiceCode() {
-		return "SERVER_PORT_SETTING";
-	}
 
 	/***
 	 * ServerPortSetting.class

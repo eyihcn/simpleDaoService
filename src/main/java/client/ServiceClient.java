@@ -13,6 +13,7 @@ import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -38,11 +39,12 @@ import entity.ServerPortSetting;
  * 
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Serializable> {
+public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Serializable> {
 
-	final Logger log = LoggerFactory.getLogger(DaoServiceClient.class);
+	final Logger log = LoggerFactory.getLogger(ServiceClient.class);
 	
-	private RestTemplate restTemplate = new RestTemplate();
+//	private RestTemplate restTemplate = new RestTemplate(); //the RestTemplate is thread-safe once constructed
+	private RestTemplate restTemplate ;//the RestTemplate is thread-safe once constructed
 	private static Map<String, Map<String, String>> serviceRouterConfigs = new HashMap<String, Map<String, String>>();
 
 	protected static final String COLLECTION = "collection";
@@ -65,8 +67,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private String responseJson ; // 响应结果的json字符串
 	private int timeOut = -1;
 
-	public DaoServiceClient() {
-		initRquestHostAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+	public ServiceClient() {
+//		initRquestHostAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+		initRquestHostAndToken_2(this.getClass().getAnnotation(ServiceCode.class).value());
 		ModelName modelNameClass = this.getClass().getAnnotation(ModelName.class);
 		if (modelNameClass != null) {
 			this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());
@@ -161,18 +164,18 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	/**
 	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
 	 */
-	private void initServiceEntry(String methodName) {
-		if (StringUtils.isBlank(methodName)) {
-			throw new IllegalArgumentException("methodName cannot be null !!!");
-		}
-		this.serviceEntry = new StringBuilder(SEPARATOR).append(modelName ).append( SEPARATOR ).append( entityClassName ).append( SEPARATOR ).append(methodName).toString();
+	private String initServiceEntry(String methodName) {
+		String serviceEntry = new StringBuilder(SEPARATOR).append(modelName ).append( SEPARATOR )
+				.append( entityClassName ).append( SEPARATOR ).append(methodName).toString();
+		this.serviceEntry = serviceEntry;
+		return serviceEntry;
 	}
 	
 	/**
 	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
 	 */
-	private void initServiceEntry( RequestMethodName requestMethodName) {
-		initServiceEntry(requestMethodName.getMethodName());
+	private String initServiceEntry( RequestMethodName requestMethodName) {
+		return initServiceEntry(requestMethodName.getMethodName());
 	}
 	
 	/**
@@ -597,4 +600,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return names;
 	}
 	
+	@Autowired
+	public void setRestTemplate(RestTemplate restTemplate) {
+		log.info("Autowired... " + restTemplate.hashCode());
+		this.restTemplate = restTemplate;
+	}	
 }
