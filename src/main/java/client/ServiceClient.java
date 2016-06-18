@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,11 +59,12 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 
 	private String host; // 主机
 	private String token; // 令牌
+	
 	private String serviceEntry; 
-	private String requestParam;
-	private Map<String, Object> serviceResponseMap = new HashMap<String, Object>(); // 响应结果
-	private ServiceResponse serviceResponse; // 响应结果 daoService的响应协议格式
-	private String responseJson ; // 响应结果的json字符串
+//	private String requestParam;
+//	private Map<String, Object> serviceResponseMap = new HashMap<String, Object>(); // 响应结果
+//	private ServiceResponse serviceResponse; // 响应结果 daoService的响应协议格式
+//	private String responseJson ; // 响应结果的json字符串
 	private int timeOut = -1;
 
 	public ServiceClient() {
@@ -161,22 +161,22 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	        }
 	 }
 
-	/**
-	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
-	 */
-	private String initServiceEntry(String methodName) {
-		String serviceEntry = new StringBuilder(SEPARATOR).append(modelName ).append( SEPARATOR )
-				.append( entityClassName ).append( SEPARATOR ).append(methodName).toString();
-//		this.serviceEntry = serviceEntry;
-		return serviceEntry;
-	}
+//	/**
+//	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
+//	 */
+//	private String initServiceEntry(String methodName) {
+//		String serviceEntry = new StringBuilder(SEPARATOR).append(modelName ).append( SEPARATOR )
+//				.append( entityClassName ).append( SEPARATOR ).append(methodName).toString();
+////		this.serviceEntry = serviceEntry;
+//		return serviceEntry;
+//	}
 	
-	/**
-	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
-	 */
-	private String initServiceEntry( RequestMethodName requestMethodName) {
-		return initServiceEntry(requestMethodName.getMethodName());
-	}
+//	/**
+//	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
+//	 */
+//	private String initServiceEntry( RequestMethodName requestMethodName) {
+//		return initServiceEntry(requestMethodName.getMethodName());
+//	}
 	
 	/**
 	 * headers支持 json格式
@@ -203,11 +203,15 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		return response;
 	}
 	
-	protected Object requestForResult() {
+	/**
+	 * 返回请求响应的result(内部DAO)
+	 * @param requestParam
+	 * @return
+	 */
+	protected Object requestForResult(RequestMethodName requestMethodName,String requestParam) {
 		try {
-			serviceResponse = request(ServiceResponse.class, buildRequestURL(), this.requestParam==null?"{}":this.requestParam);
+			ServiceResponse serviceResponse = request(ServiceResponse.class, _buildRequestURL(requestMethodName), requestParam==null?"{}":requestParam);
 			if (serviceResponse == null) {
-				serviceResponse = new ServiceResponse(ResponseStatus.ERROR);
 				return null;
 			}
 			return serviceResponse.getResult();
@@ -218,34 +222,43 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	}
 	
 	/**
-	 * 返回请求结果的JSON字符穿
+	 * 返回请求响应的JSON字符穿
 	 * 
 	 * @return
 	 */
-	public String getJSONResponse() {
-		responseJson = request(String.class, buildRequestURL(), this.requestParam==null?"{}":this.requestParam);
-		return responseJson;
+	public String getJSONResponse(String methodName,String requestParam) {
+		return request(String.class, _buildRequestURL(methodName), requestParam==null?"{}":requestParam);
 	}
 	
 	/**
-	 * 返回请求结果的Map
-	 * 
+	 * 返回请求响应的result(内部DAO)
+	 * @param requestParam
 	 * @return
 	 */
-	public Map<String,Object> getMapResponse() {
-		serviceResponseMap = request(Map.class, buildRequestURL(), this.requestParam==null?"{}":this.requestParam);
-		return serviceResponseMap;
+	public Map<String,Object> getMapResponse(String methodName,String requestParam) {
+		return  request(Map.class, _buildRequestURL(methodName), requestParam==null?"{}":requestParam);
 	}
 	
 	/**
 	 * serviceAdderss[ip:port] + serviceEntry[/模块名/实体名/方法] + ? +serviceToken=[token]
 	 * @return
 	 */
-	private  String buildRequestURL() {
-		return new StringBuilder(StringUtils.stripEnd(getServiceAddress(), "/"))
-				.append( StringUtils.stripEnd(getServiceEntry(), "/"))
-				.append("?token=" + getServiceToken())
-				.toString();
+	private  String _buildRequestURL(String methodName) {
+		return new StringBuilder(StringUtils.stripEnd(host, "/"))
+					.append( StringUtils.stripEnd(
+							new StringBuilder(SEPARATOR)
+							.append(modelName ).append( SEPARATOR )
+							.append( entityClassName ).append( SEPARATOR ).append(methodName).toString(), "/")
+							)
+							.append("?token=" + token).toString();
+	}
+	
+	/**
+	 * serviceAdderss[ip:port] + serviceEntry[/模块名/实体名/方法] + ? +serviceToken=[token]
+	 * @return
+	 */
+	private  String _buildRequestURL(RequestMethodName requestMethodName) {
+		return _buildRequestURL(requestMethodName.getMethodName());
 	}
 	
 	public Map<String, Object> findEntityCollection() {
@@ -254,13 +267,8 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 
 	public Map<String, Object> findEntityCollection(Map<String, Object> query) {
 		
-		initServiceEntry(RequestMethodName.FIND_COLLECTION);
-		Map<String, Object> map = null;
-		if (MapUtils.isEmpty(query)) {
-			map = getCollection();
-		} else {
-			map = getCollection(query);
-		}
+		String requestParam = _getCollectionRequestParam(query, false);
+		Map<String, Object> map = (Map<String, Object>) requestForResult(RequestMethodName.FIND_COLLECTION,requestParam);
 		map.put(COLLECTION, _mapToEntity(entityClass,(Collection<Map<String, Object>>)map.get(COLLECTION), ormPackageNames));
 		return map;
 	}
@@ -353,21 +361,10 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		return Integer.parseInt(requestForResult().toString());
 	}
 
-	public Map<String, Object> getCollection(Boolean excludeCount) {
-		return getCollection(null, excludeCount);
-	}
-
-	public Map<String, Object> getCollection() {
-		return getCollection(Boolean.valueOf(false));
-	}
-
-	public Map<String, Object> getCollection(Map<String, Object> query) {
-		return getCollection(query, Boolean.valueOf(false));
-	}
 
 	public Map<String, Object> getCollection(Map<String, Object> query, Boolean excludeCount) {
-		_getCollectionRequest(query, excludeCount);
-		return (Map<String, Object>) requestForResult();
+		String requestParam = _getCollectionRequestParam(query, excludeCount);
+		return (Map<String, Object>) requestForResult(requestParam);
 	}
 
 	/**
@@ -375,8 +372,9 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	 * @param query
 	 * @param excludeCount
 	 */
-	private void _getCollectionRequest(Map<String, Object> query, Boolean excludeCount) {
-		setRequestParam(query);
+	private String  _getCollectionRequestParam(Map<String, Object> query, Boolean excludeCount) {
+//		setRequestParam(query);
+		return null;
 	}
 
 	private void activateTimeOut() {
@@ -392,55 +390,6 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 				((HttpComponentsClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
 			}
 		}
-	}
-
-
-	public String getServiceAddress() {
-		return host;
-	}
-
-	public void setServiceAddress(String serviceAddress) {
-		this.host = serviceAddress;
-	}
-
-	public String getServiceEntry() {
-		return serviceEntry;
-	}
-
-	public void setServiceEntry(String serviceEntry) {
-		this.serviceEntry = serviceEntry;
-	}
-
-	public String getRequestParam() {
-		return requestParam;
-	}
-
-	public void setRequestParam(String requestParam) {
-		this.requestParam = requestParam;
-	}
-	
-	public void setRequestParam(Map<String,Object> mapParam) {
-		setRequestParam(Json.toJson(mapParam));
-	}
-
-	public Map<String, Object> getServiceResult() {
-		return serviceResponseMap;
-	}
-
-	public void setServiceResult(Map<String, Object> serviceResult) {
-		this.serviceResponseMap = serviceResult;
-	}
-
-	public String getServiceToken() {
-		return token;
-	}
-
-	public void setServiceToken(String serviceToken) {
-		this.token = serviceToken;
-	}
-
-	public void setServiceRequestId(Object id) {
-		setRequestParam(id.toString());
 	}
 
 	public void setServiceRequestQuery(Object query, Object sort, Object pagination) {
