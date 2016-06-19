@@ -9,6 +9,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -169,12 +170,16 @@ public final class MyBeanUtil {
 	
 	 
 	 public static <T> List<T> _mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
-			List<T> entities = new ArrayList<T>();
-			for (Map<String,Object> properties: propertiesCol) {
-				entities.add(_mapToEntity(clazz, properties, ormPackageNames));
-			}
-			return entities;
+		
+		if (null == propertiesCol) {
+			return Collections.EMPTY_LIST;
 		}
+		List<T> entities = new ArrayList<T>();
+		for (Map<String,Object> properties: propertiesCol) {
+			entities.add(_mapToEntity(clazz, properties, ormPackageNames));
+		}
+		return entities;
+	}
 
 	/**
 	 * 
