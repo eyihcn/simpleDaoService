@@ -18,21 +18,12 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 // 注解会在class字节码文件中存在，在运行时可以通过反射获取到
 @Documented
-public @interface ModelCode {
-
-	/**
-	 * default for wish platform 
-	 * 模块环境变量Token 例如："WISH_DAO_SERVICE"
-	 * 
-	 * @return
-	 */
-	public String serviceCode() default "WISH_DAO_SERVICE";
+public @interface ModelName {
 
 	/**
 	 * 模块名称
 	 * 
 	 * @return
 	 */
-	public String modelName() default "";
-
+	 String value() default "";
 }

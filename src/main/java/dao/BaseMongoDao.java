@@ -24,7 +24,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.util.Assert;
 
 import utils.CommonDaoHelper;
-import utils.MyBeanUtils;
+import utils.MyBeanUtil;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
@@ -50,8 +50,8 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	private String collectionName;// 创建的数据表的名称是类名的首字母小写
 
 	public BaseMongoDao() {
-		this.entityClass = MyBeanUtils.getSuperClassGenericType(this.getClass());
-		this.pkClass = 	MyBeanUtils.getSuperClassGenericType(this.getClass(), 1);
+		this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());
+		this.pkClass = 	MyBeanUtil.getSuperClassGenericType(this.getClass(), 1);
 		this.collectionName = _getCollectionName();
 	}
 

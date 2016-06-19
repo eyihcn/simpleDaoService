@@ -23,7 +23,7 @@ import org.springframework.web.client.RestTemplate;
 import service.ResponseStatus;
 import service.ServiceResponse;
 import utils.Json;
-import utils.MyBeanUtils;
+import utils.MyBeanUtil;
 import entity.BaseEntity;
 import entity.ServerPortSetting;
 
@@ -48,6 +48,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	protected static final String COLLECTION = "collection";
 	protected static final String COLLECTION_COUNT = "collectionCount";
 	protected static final String SEPARATOR = "/";
+	protected static final String CODE = "code";
+	protected static final String RESULT = "result";
 
 	private String modelName;
 	private Class<T> entityClass;
@@ -62,39 +64,18 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private ServiceResponse serviceResponse; // 响应结果 daoService的响应协议格式
 	private String responseJson ; // 响应结果的json字符串
 	private int timeOut = -1;
-	private ModelCode modelCode;
 
 	public DaoServiceClient() {
-		this.modelCode = this.getClass().getAnnotation(ModelCode.class);
-//		initRquestHostAndToken(initServiceCode());
-		initRquestHostAndToken_2(initServiceCode());
-		this.modelName =  initModelName();
-		this.entityClass = MyBeanUtils.getSuperClassGenericType(this.getClass());
-		this.entityClassName = this.entityClass.getSimpleName();
+		initRquestHostAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+		ModelName modelNameClass = this.getClass().getAnnotation(ModelName.class);
+		if (modelNameClass != null) {
+			this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());
+			this.entityClassName = this.entityClass.getSimpleName();
+			this.modelName =  modelNameClass.value();
+		}
+		this.ormPackageNames = prepareOrmPackageNames();
 	}
 	
-	/**
-	 * 通过注解指定serviceCode的方式可以被覆盖，自定义 
-	 * @return
-	 */
-	protected String initServiceCode() {
-		if (null == modelCode) {
-			throw new RuntimeException("can not find serviceCode and modelName, please add Annotation ModelCode !!!");
-		}
-		return modelCode.serviceCode();
-	}
-	
-	/**
-	 * 通过注解指定modelName的方式可以被覆盖，自定义 
-	 * @return
-	 */
-	protected String initModelName() {
-		if (null == modelCode) {
-			return "";
-		}
-		return modelCode.modelName();
-	}
-
 	/**
 	 * 初始化请求的Host和Token
 	 */
@@ -563,15 +544,20 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return getRequestParam();
 	}
 
-	public Boolean checkSuccess() {
-		if ((null != serviceResponseMap) && (null != serviceResponseMap.get("code"))
-				&& ((ResponseStatus.SUCCESS.getCode().equals(serviceResponseMap.get("code"))) 
-						|| ((ResponseStatus.ERROR.equals(serviceResponseMap.get("code")))
-								&& (null != serviceResponseMap.get("result"))))) {
-			return Boolean.valueOf(true);
+	public boolean checkSuccess() {
+		if (null == serviceResponseMap) {
+			return false;
 		}
-
-		return Boolean.valueOf(false);
+		if (null == serviceResponseMap.get(CODE)) {
+			return false;
+		}
+		if (!ResponseStatus.SUCCESS.getCode().equals(serviceResponseMap.get(CODE))) {
+			return false;
+		}
+		if (null == serviceResponseMap.get(RESULT)) {
+			return false;
+		}
+		return true;
 	}
 
 	public int getTimeOut() {
@@ -594,11 +580,11 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @return
 	 */
 	protected T _mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
-		return MyBeanUtils._mapToEntity(clazz, properties, ormPackageNames);
+		return MyBeanUtil._mapToEntity(clazz, properties, ormPackageNames);
 	}
 	
 	protected List<T> _mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
-		return MyBeanUtils._mapToEntity(clazz, propertiesCol, ormPackageNames);
+		return MyBeanUtil._mapToEntity(clazz, propertiesCol, ormPackageNames);
 	}
 	
 	/**

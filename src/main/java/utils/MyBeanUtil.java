@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
 import test.ComplicatedBean;
 import test.User;
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public final class MyBeanUtils {
+public final class MyBeanUtil {
 	
 	
 	public static Class getSuperClassGenericType(Class clazz, int index) {
@@ -517,7 +517,7 @@ public final class MyBeanUtils {
 		System.out.println("json =====>"+json);
 		Map<String,Object> properties = Json.fromJson(json, Map.class);
 		System.out.println("properties===>"+properties);
-		ComplicatedBean bean = MyBeanUtils._mapToEntity(ComplicatedBean.class, properties, "test");
+		ComplicatedBean bean = MyBeanUtil._mapToEntity(ComplicatedBean.class, properties, "test");
 		
 		System.out.println(bean.getNameToUser());
 		System.out.println(bean.getGoupToUsers());
