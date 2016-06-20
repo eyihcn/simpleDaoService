@@ -8,7 +8,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,13 +46,23 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	
 //	private RestTemplate restTemplate = new RestTemplate(); //the RestTemplate is thread-safe once constructed
 	private RestTemplate restTemplate ;//the RestTemplate is thread-safe once constructed
-	private static Map<String, Map<String, String>> serviceRouterConfigs = new HashMap<String, Map<String, String>>();
+	private static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap();
 
-	protected static final String COLLECTION = "collection";
-	protected static final String COLLECTION_COUNT = "collectionCount";
-	protected static final String SEPARATOR = "/";
-	protected static final String CODE = "code";
-	protected static final String RESULT = "result";
+	public static final String FIND_COLLECTION = "findCollection";
+	public static final String FIND_LIST = "findList";
+	public static final String FIND_ONE = "findOne";
+	public static final String FIND_BY_ID = "findById";
+	public static final String SAVE = "save";
+	public static final String UPDATE = "update";
+	public static final String SAVE_OR_UPDATE = "saveOrUpdate";
+	public static final String DELETE = "delete";
+	public static final String DELETE_BY_ID = "deleteById";
+	public static final String COUNTS = "counts";
+	public static final String COLLECTION = "collection";
+	public static final String COLLECTION_COUNT = "collectionCount";
+	public static final String SEPARATOR = "/";
+	public static final String CODE = "code";
+	public static final String RESULT = "result";
 
 	private String modelName;
 	private Class<T> entityClass;
@@ -59,12 +71,6 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 
 	private String host; // 主机
 	private String token; // 令牌
-	
-	private String serviceEntry; 
-//	private String requestParam;
-//	private Map<String, Object> serviceResponseMap = new HashMap<String, Object>(); // 响应结果
-//	private ServiceResponse serviceResponse; // 响应结果 daoService的响应协议格式
-//	private String responseJson ; // 响应结果的json字符串
 	private int timeOut = -1;
 
 	public ServiceClient() {
@@ -160,24 +166,7 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	         return null;
 	        }
 	 }
-
-//	/**
-//	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
-//	 */
-//	private String initServiceEntry(String methodName) {
-//		String serviceEntry = new StringBuilder(SEPARATOR).append(modelName ).append( SEPARATOR )
-//				.append( entityClassName ).append( SEPARATOR ).append(methodName).toString();
-////		this.serviceEntry = serviceEntry;
-//		return serviceEntry;
-//	}
-	
-//	/**
-//	 * 构建crud的ServiceEntry ---->/模块名/实体名/方法
-//	 */
-//	private String initServiceEntry( RequestMethodName requestMethodName) {
-//		return initServiceEntry(requestMethodName.getMethodName());
-//	}
-	
+	 
 	/**
 	 * headers支持 json格式
 	 * @param responseType 返回结果类型
@@ -203,12 +192,7 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		return response;
 	}
 	
-	/**
-	 * 返回请求响应的result(内部DAO)
-	 * @param requestParam
-	 * @return
-	 */
-	protected Object requestForResult(RequestMethodName requestMethodName,String requestParam) {
+	protected Object requestForResult(String requestMethodName,String requestParam) {
 		try {
 			ServiceResponse serviceResponse = request(ServiceResponse.class, _buildRequestURL(requestMethodName), requestParam==null?"{}":requestParam);
 			if (serviceResponse == null) {
@@ -219,15 +203,6 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 			e.printStackTrace();
 		}
 		return null;
-	}
-	
-	/**
-	 * 返回请求响应的JSON字符穿
-	 * 
-	 * @return
-	 */
-	public String getJSONResponse(String methodName,String requestParam) {
-		return request(String.class, _buildRequestURL(methodName), requestParam==null?"{}":requestParam);
 	}
 	
 	/**
@@ -253,119 +228,132 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 							.append("?token=" + token).toString();
 	}
 	
-	/**
-	 * serviceAdderss[ip:port] + serviceEntry[/模块名/实体名/方法] + ? +serviceToken=[token]
-	 * @return
-	 */
-	private  String _buildRequestURL(RequestMethodName requestMethodName) {
-		return _buildRequestURL(requestMethodName.getMethodName());
-	}
-	
 	public Map<String, Object> findEntityCollection() {
-		return findEntityCollection(null);
+		return findCollection(null);
 	}
 
-	public Map<String, Object> findEntityCollection(Map<String, Object> query) {
-		
-		String requestParam = _getCollectionRequestParam(query, false);
-		Map<String, Object> map = (Map<String, Object>) requestForResult(RequestMethodName.FIND_COLLECTION,requestParam);
+	public Map<String, Object> findCollection(Map<String, Object> query) {
+		// 1. 将query转换为请求json参数
+		String requestJson = _getCollectionRequestParam(query, false);
+		// 2. 请求daoService，拿到返回的result
+		Map<String, Object> map = (Map<String, Object>) requestForResult(FIND_COLLECTION,requestJson);
+		// 3. 将result(Map) 转换为实体
 		map.put(COLLECTION, _mapToEntity(entityClass,(Collection<Map<String, Object>>)map.get(COLLECTION), ormPackageNames));
 		return map;
 	}
 
-	public List<T> findEntityList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
+	public List<T> findList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
 		
-		initServiceEntry(RequestMethodName.FIND_LIST);
-		setServiceRequestQuery(query, sort, pagination);
-		return _mapToEntity(entityClass, (Collection<Map<String, Object>>) requestForResult(), ormPackageNames);
+		String requestJson =  parseToRequestJson(query, sort, pagination);
+		Collection<Map<String, Object>> propertiesCol = (Collection<Map<String, Object>>)requestForResult(FIND_LIST,requestJson);
+		return _mapToEntity(entityClass, propertiesCol, ormPackageNames);
 	}
 
-	public T findEntity(Map<String, Object> request) {
-		
-		initServiceEntry(RequestMethodName.FIND_ONE);
-		setRequestParam(Json.toJson(request));
-		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(), ormPackageNames);
+	public T findOne(Map<String, Object> query) {
+		return findOne(query,null);
+	}
+	
+	public T findOne(Map<String, Object> query, Map<String, Object> sort) {
+		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_ONE,parseToRequestJson(query, sort, null)), ormPackageNames);
 	}
 
-	public T findEntityById(PK id) {
+	public T findById(PK id) {
 		if (null == id) {
 			return null;
 		}
-		initServiceEntry(RequestMethodName.FIND_BY_ID);
-		setRequestParam(id.toString());
-		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(), ormPackageNames);
+		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_BY_ID,id.toString()), ormPackageNames);
 	}
 
-	public boolean createEntity(T entity) {
-		return createEntity(Json.toJson(entity));
+	public boolean create(T entity) {
+		if (entity == null) {
+			return false;
+		}
+		return create(Json.toJson(entity));
 	}
 	
-	public boolean createEntity(Map<String,Object> properties) {
-		return createEntity(Json.toJson(properties));
+	public boolean create(Map<String,Object> properties) {
+		if (MapUtils.isEmpty(properties)) {
+			return false;
+		}
+		return create(Json.toJson(properties));
 	}
 	
-	public boolean createEntity(String jsonParam) {
-		initServiceEntry(RequestMethodName.SAVE);
-		setRequestParam(jsonParam);
-		getMapResponse();
-		return checkSuccess();
+	public boolean create(String entityJson) {
+		if (StringUtils.isBlank(entityJson)) {
+			return false;
+		}
+		return checkSuccess(getMapResponse(SAVE,entityJson));
 	}
 
 	public boolean updateEntity(T entity) {
-		return updateEntity(Json.toJson(entity));
+		if (entity == null) {
+			return false;
+		}
+		return update(Json.toJson(entity));
 	}
 	
-	public boolean updateEntity(Map<String,Object> properties) {
-		return updateEntity(Json.toJson(properties));
+	public boolean update(Map<String,Object> properties) {
+		if (MapUtils.isEmpty(properties)) {
+			return false;
+		}
+		return update(Json.toJson(properties));
 	}
 	
-	public boolean updateEntity(String jsonParam) {
-		initServiceEntry(RequestMethodName.UPDATE);
-		setRequestParam(jsonParam);
-		getMapResponse();
-		return checkSuccess();
+	public boolean update(String jsonParam) {
+		if (StringUtils.isBlank(jsonParam)) {
+			return false;
+		}
+		return checkSuccess(getMapResponse(UPDATE,jsonParam));
 	}
 	
-	public boolean saveOrUpdateEntity(T entity) {
-		return updateEntity(Json.toJson(entity));
+	public boolean saveOrUpdate(T entity) {
+		if (entity == null) {
+			return false;
+		}
+		return saveOrUpdate(Json.toJson(entity));
 	}
 	
 	public boolean saveOrUpdateEntity(Map<String,Object> properties) {
-		return updateEntity(Json.toJson(properties));
+		if (MapUtils.isEmpty(properties)) {
+			return false;
+		}
+		return saveOrUpdate(Json.toJson(properties));
 	}
 	
-	public boolean saveOrUpdateEntity(String jsonParam) {
-		initServiceEntry(RequestMethodName.SAVE_OR_UPDATE);
-		setRequestParam(jsonParam);
-		getMapResponse();
-		return checkSuccess();
+	public boolean saveOrUpdate(String jsonParam) {
+		if (StringUtils.isBlank(jsonParam)) {
+			return false;
+		}
+		return checkSuccess(getMapResponse(SAVE_OR_UPDATE,jsonParam));
 	}
 	
 	public boolean delete(Map<String,Object> query) {
-		initServiceEntry(RequestMethodName.DELETE);
-		setRequestParam(Json.toJson(query));
-		getMapResponse();
-		return checkSuccess();
+		return checkSuccess(getMapResponse(DELETE,query == null ? "{}":Json.toJson(query)));
 	}
 
-	public boolean deleteEntityById(PK id) {
-		initServiceEntry(RequestMethodName.DELETE_BY_ID);
-		setRequestParam(id.toString());
-		getMapResponse();
-		return checkSuccess();
+	public boolean deleteById(PK id) {
+		if (null == id) {
+			return false;
+		}
+		return checkSuccess(getMapResponse(DELETE_BY_ID,id.toString()));
 	}
 
-	public int countsEntity(Map<String, Object> query) {
-		initServiceEntry(RequestMethodName.COUNTS);
-		setRequestParam(Json.toJson(query));
-		return Integer.parseInt(requestForResult().toString());
+	public long counts(Map<String, Object> query) {
+		return Long.valueOf(requestForResult(COUNTS,query == null ? "{}": Json.toJson(query)).toString());
+	}
+	
+	/**
+	 * 查询集合数量
+	 * @return
+	 */
+	public long counts() {
+		return counts(null);
 	}
 
-
-	public Map<String, Object> getCollection(Map<String, Object> query, Boolean excludeCount) {
-		String requestParam = _getCollectionRequestParam(query, excludeCount);
-		return (Map<String, Object>) requestForResult(requestParam);
-	}
+//	public Map<String, Object> getCollection(Map<String, Object> query, Boolean excludeCount) {
+//		String requestParam = _getCollectionRequestParam(query, excludeCount);
+//		return (Map<String, Object>) requestForResult(requestParam);
+//	}
 
 	/**
 	 * 获取每个用户中Session中的查询条件
@@ -373,8 +361,10 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	 * @param excludeCount
 	 */
 	private String  _getCollectionRequestParam(Map<String, Object> query, Boolean excludeCount) {
-//		setRequestParam(query);
-		return null;
+		if (null == query) {
+			return "{}";
+		}
+		return Json.toJson(query);
 	}
 
 	private void activateTimeOut() {
@@ -392,8 +382,8 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		}
 	}
 
-	public void setServiceRequestQuery(Object query, Object sort, Object pagination) {
-		setServiceRequestQuery(query, sort, pagination, Boolean.valueOf(true));
+	public String parseToRequestJson(Object query, Object sort, Object pagination) {
+		return parseToRequestJson(query, sort, pagination, Boolean.valueOf(true));
 	}
 
 	/**
@@ -403,10 +393,10 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	 * @param pagination
 	 * @param excludeCount
 	 */
-	public void setServiceRequestQuery(Object query, Object sort, Object pagination, Boolean excludeCount) {
+	public String parseToRequestJson(Object query, Object sort, Object pagination, Boolean excludeCount) {
 		HashMap<String, Object> request = new HashMap();
+		if (null != query) {
 			request.put("query", query);
-			if (null != query) {
 		}
 		if (null != sort) {
 			request.put("sort", sort);
@@ -417,86 +407,54 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		if (excludeCount.booleanValue()) {
 			request.put("excludeCount", "1");
 		}
-
-		setRequestParam(Json.toJson(request));
+		return Json.toJson(request);
 	}
 
-	public void setServiceRequestQueryGroup(Object query, Object group) {
-		HashMap<String, Object> request = new HashMap();
+	public String parseRequestQueryGroupToRequestJson(Object query, Object group) {
+		Map<String, Object> request = new HashMap();
 		if (null != query) {
 			request.put("query", query);
 		}
-
 		request.put("group", group);
-
-		setRequestParam(Json.toJson(request));
+		return Json.toJson(request);
 	}
 
-	public String setRequestParamBatchUpdate(Object object) {
-		if ((object instanceof String)) {
-			setRequestParam((String) object);
-		} else if ((object instanceof List)) {
-			Map<String, Object> request = new HashMap();
-			request.put("updates", object);
-			setRequestParam(Json.toJson(request));
-		} else {
-			HashMap<String, Object> request = new HashMap();
-			Map<String, Object> updates = new HashMap();
-			if ((object instanceof Map)) {
-				updates = (Map) object;
-			} else {
-				updates = (Map) Json.fromJson(Json.toJson(object), Map.class);
-			}
-			request.put("ids", updates.get("ids"));
-			request.put("updates", updates);
-			setRequestParam(Json.toJson(request));
-		}
+//	public String setRequestParamBatchUpdate(Object object) {
+//		if ((object instanceof String)) {
+//			setRequestParam((String) object);
+//		} else if ((object instanceof List)) {
+//			Map<String, Object> request = new HashMap();
+//			request.put("updates", object);
+//			setRequestParam(Json.toJson(request));
+//		} else {
+//			HashMap<String, Object> request = new HashMap();
+//			Map<String, Object> updates = new HashMap();
+//			if ((object instanceof Map)) {
+//				updates = (Map) object;
+//			} else {
+//				updates = (Map) Json.fromJson(Json.toJson(object), Map.class);
+//			}
+//			request.put("ids", updates.get("ids"));
+//			request.put("updates", updates);
+//			setRequestParam(Json.toJson(request));
+//		}
+//
+//		return getRequestParam();
+//	}
 
-		return getRequestParam();
-	}
 
-	public String setServiceRequestUpdate(Object object) {
-		if ((object instanceof String)) {
-			setRequestParam((String) object);
-		} else {
-			HashMap<String, Object> request = new HashMap();
-			Map<String, Object> updates = new HashMap();
-			if ((object instanceof Map)) {
-				updates = (Map) object;
-			} else {
-				updates = (Map) Json.fromJson(Json.toJson(object), Map.class);
-			}
-			request.put("id", updates.get("id"));
-			request.put("updates", updates);
-			setRequestParam(Json.toJson(request));
-		}
+//	public String setServiceRequestCreateBatch(Object object) {
+//		if ((object instanceof String)) {
+//			setRequestParam((String) object);
+//		} else {
+//			setRequestParam(Json.toJson(object));
+//		}
+//
+//		return getRequestParam();
+//	}
 
-		return getRequestParam();
-	}
 
-	public String setServiceRequestCreateBatch(Object object) {
-		if ((object instanceof String)) {
-			setRequestParam((String) object);
-		} else {
-			setRequestParam(Json.toJson(object));
-		}
-
-		return getRequestParam();
-	}
-
-	public String setServiceRequestCreate(Object object) {
-		Map<String, Object> request = new HashMap();
-		if ((object instanceof Map)) {
-			request = (Map) object;
-		} else {
-			request = (Map) Json.fromJson(Json.toJson(object), Map.class);
-		}
-		setRequestParam(Json.toJson(request));
-
-		return getRequestParam();
-	}
-
-	public boolean checkSuccess() {
+	public boolean checkSuccess(Map<String,Object> serviceResponseMap) {
 		if (null == serviceResponseMap) {
 			return false;
 		}

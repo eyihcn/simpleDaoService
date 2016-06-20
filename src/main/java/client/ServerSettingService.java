@@ -51,14 +51,14 @@ public class ServerSettingService extends ServiceClient<ServerPortSetting, Integ
 
 	public ServerPortSetting queryServerPortSetting(Map<String, Object> query) {
 		setServiceEntry(QUERY_SERVER_PORT_SETTING_ENTRY);
-		setServiceRequestQuery(query, null, null);
+		parseToRequestJson(query, null, null);
 		return (ServerPortSetting) requestForResult();
 	}
 
 	@SuppressWarnings("unchecked")
 	public List<ServerPortSetting> queryServerPortSettings(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
 		setServiceEntry(QUERY_SERVER_PORT_SETTINGS_ENTRY);
-		setServiceRequestQuery(query, sort, pagination);
+		parseToRequestJson(query, sort, pagination);
 		return (List<ServerPortSetting>) requestForResult();
 	}
 
@@ -72,7 +72,7 @@ public class ServerSettingService extends ServiceClient<ServerPortSetting, Integ
 		Map<String, Object> query = new HashMap<String, Object>();
 		query.put("code", code);
 		setServiceEntry(QUERY_SERVER_PORT_SETTING_ENTRY);
-		setServiceRequestQuery(query, null, null);
+		parseToRequestJson(query, null, null);
 		return (ServerPortSetting) requestForResult();
 	}
 
