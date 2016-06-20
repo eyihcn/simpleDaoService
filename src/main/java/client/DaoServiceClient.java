@@ -4,12 +4,14 @@ import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -40,11 +42,10 @@ import entity.ServerPortSetting;
  * 
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Serializable> {
+public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Serializable> {
 
-	final Logger log = LoggerFactory.getLogger(ServiceClient.class);
+	final Logger log = LoggerFactory.getLogger(DaoServiceClient.class);
 	
-//	private RestTemplate restTemplate = new RestTemplate(); //the RestTemplate is thread-safe once constructed
 	private RestTemplate restTemplate ;//the RestTemplate is thread-safe once constructed
 	private static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap();
 
@@ -60,10 +61,14 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	public static final String COUNTS = "counts";
 	public static final String COLLECTION = "collection";
 	public static final String COLLECTION_COUNT = "collectionCount";
+	public static final String BATCH_UPDATE_BY_IDS = "batchUpdateByIds";
+	public static final String BATCH_UPDATE = "batchUpdate";
+	public static final String BATCH_INSERT = "batchInsert";
 	public static final String SEPARATOR = "/";
+	public static final String IDS = "ids";
 	public static final String CODE = "code";
 	public static final String RESULT = "result";
-
+	public static MultiValueMap<String, Object> headers ;
 	private String modelName;
 	private Class<T> entityClass;
 	private String entityClassName; // simpleName
@@ -72,8 +77,14 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	private String host; // 主机
 	private String token; // 令牌
 	private int timeOut = -1;
+	
+	static {
+		MultiValueMap<String, Object> headers = new LinkedMultiValueMap();
+		headers.add("Accept", "application/json;charset=utf-8");
+		headers.add("Content-Type", "application/json;charset=utf-8");
+	}
 
-	public ServiceClient() {
+	public DaoServiceClient() {
 //		initRquestHostAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
 		initRquestHostAndToken_2(this.getClass().getAnnotation(ServiceCode.class).value());
 		ModelName modelNameClass = this.getClass().getAnnotation(ModelName.class);
@@ -168,33 +179,34 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	 }
 	 
 	/**
-	 * headers支持 json格式
+	 * 
 	 * @param responseType 返回结果类型
 	 * @param requsetURL 请求URL
-	 * @param jsonParam json请求参数字符串
+	 * @param requestParam 请求参数
+	 * @param headers 请求头
 	 * @return
 	 */
-	public <E> E request(Class<E> responseType,String requsetURL,String jsonParam) {
+	public <E> E request(Class<E> responseType,String requsetURL,Object requestParam,MultiValueMap<String, Object> headers ) {
 		
 		E response = null;
+		if (!(requestParam instanceof String)) {
+			requestParam = requestParam==null?"{}":Json.toJson(requestParam);
+		}
 		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requsetURL).toString());
-		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(jsonParam).toString());
+		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requestParam).toString());
 		try {
-			MultiValueMap<String, Object> headers = new LinkedMultiValueMap();
-			headers.add("Accept", "application/json;charset=utf-8");
-			headers.add("Content-Type", "application/json;charset=utf-8");
-			HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
+			HttpEntity httpEntity = new HttpEntity(requestParam, headers);
 			response = restTemplate.postForObject(requsetURL, httpEntity,responseType , new Object[0]);
-			activateTimeOut();
+			_activateTimeOut();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return response;
 	}
 	
-	protected Object requestForResult(String requestMethodName,String requestParam) {
+	public Object requestForResult(String requestMethodName,Object requestParam) {
 		try {
-			ServiceResponse serviceResponse = request(ServiceResponse.class, _buildRequestURL(requestMethodName), requestParam==null?"{}":requestParam);
+			ServiceResponse serviceResponse = request(ServiceResponse.class, _buildRequestURL(requestMethodName), requestParam,headers);
 			if (serviceResponse == null) {
 				return null;
 			}
@@ -210,8 +222,8 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	 * @param requestParam
 	 * @return
 	 */
-	public Map<String,Object> getMapResponse(String methodName,String requestParam) {
-		return  request(Map.class, _buildRequestURL(methodName), requestParam==null?"{}":requestParam);
+	public Map<String,Object> getMapResponse(String methodName,Object requestParam) {
+		return  request(Map.class, _buildRequestURL(methodName), requestParam, headers);
 	}
 	
 	/**
@@ -234,19 +246,18 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 
 	public Map<String, Object> findCollection(Map<String, Object> query) {
 		// 1. 将query转换为请求json参数
-		String requestJson = _getCollectionRequestParam(query, false);
+		String requestJson = getCollectionRequestJson(query, false);
 		// 2. 请求daoService，拿到返回的result
 		Map<String, Object> map = (Map<String, Object>) requestForResult(FIND_COLLECTION,requestJson);
 		// 3. 将result(Map) 转换为实体
-		map.put(COLLECTION, _mapToEntity(entityClass,(Collection<Map<String, Object>>)map.get(COLLECTION), ormPackageNames));
+		map.put(COLLECTION, mapToEntity(entityClass,(Collection<Map<String, Object>>)map.get(COLLECTION), ormPackageNames));
 		return map;
 	}
 
 	public List<T> findList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
 		
 		String requestJson =  parseToRequestJson(query, sort, pagination);
-		Collection<Map<String, Object>> propertiesCol = (Collection<Map<String, Object>>)requestForResult(FIND_LIST,requestJson);
-		return _mapToEntity(entityClass, propertiesCol, ormPackageNames);
+		return mapToEntity(entityClass, (Collection<Map<String, Object>>)requestForResult(FIND_LIST,requestJson), ormPackageNames);
 	}
 
 	public T findOne(Map<String, Object> query) {
@@ -254,14 +265,14 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	}
 	
 	public T findOne(Map<String, Object> query, Map<String, Object> sort) {
-		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_ONE,parseToRequestJson(query, sort, null)), ormPackageNames);
+		return mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_ONE,parseToRequestJson(query, sort, null)), ormPackageNames);
 	}
 
 	public T findById(PK id) {
 		if (null == id) {
 			return null;
 		}
-		return _mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_BY_ID,id.toString()), ormPackageNames);
+		return mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_BY_ID,id.toString()), ormPackageNames);
 	}
 
 	public boolean create(T entity) {
@@ -327,8 +338,37 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		return checkSuccess(getMapResponse(SAVE_OR_UPDATE,jsonParam));
 	}
 	
+	public boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates) {
+		if (CollectionUtils.isEmpty(ids) || MapUtils.isEmpty(updates)) {
+			return false;
+		}
+		updates.put(IDS, ids);
+		return checkSuccess(getMapResponse(BATCH_UPDATE_BY_IDS,updates));
+	}
+	
+	public Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates) {
+		if (CollectionUtils.isEmpty(allUpdates)){
+			return Collections.EMPTY_MAP;
+		}
+		return(Map<Integer,Boolean>)requestForResult(FIND_LIST,allUpdates);
+	}
+	
+	public boolean batchInsert(List<Map<String, Object>> batchToSave) {
+		if (CollectionUtils.isEmpty(batchToSave)){
+			return false;
+		}
+		return checkSuccess(getMapResponse(BATCH_INSERT,batchToSave));
+	}
+	
+	public boolean batchInsert(Collection<T> batchToSave) {
+		if (CollectionUtils.isEmpty(batchToSave)){
+			return false;
+		}
+		return checkSuccess(getMapResponse(BATCH_INSERT,batchToSave));
+	}
+	
 	public boolean delete(Map<String,Object> query) {
-		return checkSuccess(getMapResponse(DELETE,query == null ? "{}":Json.toJson(query)));
+		return checkSuccess(getMapResponse(DELETE,query));
 	}
 
 	public boolean deleteById(PK id) {
@@ -339,7 +379,7 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	}
 
 	public long counts(Map<String, Object> query) {
-		return Long.valueOf(requestForResult(COUNTS,query == null ? "{}": Json.toJson(query)).toString());
+		return Long.valueOf(requestForResult(COUNTS,query).toString());
 	}
 	
 	/**
@@ -350,36 +390,16 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		return counts(null);
 	}
 
-//	public Map<String, Object> getCollection(Map<String, Object> query, Boolean excludeCount) {
-//		String requestParam = _getCollectionRequestParam(query, excludeCount);
-//		return (Map<String, Object>) requestForResult(requestParam);
-//	}
-
 	/**
 	 * 获取每个用户中Session中的查询条件
 	 * @param query
 	 * @param excludeCount
 	 */
-	private String  _getCollectionRequestParam(Map<String, Object> query, Boolean excludeCount) {
+	public String  getCollectionRequestJson(Map<String, Object> query, Boolean excludeCount) {
 		if (null == query) {
 			return "{}";
 		}
 		return Json.toJson(query);
-	}
-
-	private void activateTimeOut() {
-		if (timeOut > 0) {
-			Object factory = restTemplate.getRequestFactory();
-			if ((factory instanceof SimpleClientHttpRequestFactory)) {
-				System.out.println("HttpUrlConnection is used");
-				((SimpleClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
-				((SimpleClientHttpRequestFactory) factory).setReadTimeout(timeOut);
-			} else if ((factory instanceof HttpComponentsClientHttpRequestFactory)) {
-				System.out.println("HttpClient is used");
-				((HttpComponentsClientHttpRequestFactory) factory).setReadTimeout(timeOut);
-				((HttpComponentsClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
-			}
-		}
 	}
 
 	public String parseToRequestJson(Object query, Object sort, Object pagination) {
@@ -419,41 +439,6 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		return Json.toJson(request);
 	}
 
-//	public String setRequestParamBatchUpdate(Object object) {
-//		if ((object instanceof String)) {
-//			setRequestParam((String) object);
-//		} else if ((object instanceof List)) {
-//			Map<String, Object> request = new HashMap();
-//			request.put("updates", object);
-//			setRequestParam(Json.toJson(request));
-//		} else {
-//			HashMap<String, Object> request = new HashMap();
-//			Map<String, Object> updates = new HashMap();
-//			if ((object instanceof Map)) {
-//				updates = (Map) object;
-//			} else {
-//				updates = (Map) Json.fromJson(Json.toJson(object), Map.class);
-//			}
-//			request.put("ids", updates.get("ids"));
-//			request.put("updates", updates);
-//			setRequestParam(Json.toJson(request));
-//		}
-//
-//		return getRequestParam();
-//	}
-
-
-//	public String setServiceRequestCreateBatch(Object object) {
-//		if ((object instanceof String)) {
-//			setRequestParam((String) object);
-//		} else {
-//			setRequestParam(Json.toJson(object));
-//		}
-//
-//		return getRequestParam();
-//	}
-
-
 	public boolean checkSuccess(Map<String,Object> serviceResponseMap) {
 		if (null == serviceResponseMap) {
 			return false;
@@ -489,12 +474,27 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 	 *            一个或者多个自定义orm的包名
 	 * @return
 	 */
-	protected T _mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
-		return MyBeanUtil._mapToEntity(clazz, properties, ormPackageNames);
+	protected T mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
+		return MyBeanUtil.mapToEntity(clazz, properties, ormPackageNames);
 	}
 	
-	protected List<T> _mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
-		return MyBeanUtil._mapToEntity(clazz, propertiesCol, ormPackageNames);
+	protected List<T> mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
+		return MyBeanUtil.mapToEntity(clazz, propertiesCol, ormPackageNames);
+	}
+	
+	private void _activateTimeOut() {
+		if (timeOut > 0) {
+			Object factory = restTemplate.getRequestFactory();
+			if ((factory instanceof SimpleClientHttpRequestFactory)) {
+				System.out.println("HttpUrlConnection is used");
+				((SimpleClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
+				((SimpleClientHttpRequestFactory) factory).setReadTimeout(timeOut);
+			} else if ((factory instanceof HttpComponentsClientHttpRequestFactory)) {
+				System.out.println("HttpClient is used");
+				((HttpComponentsClientHttpRequestFactory) factory).setReadTimeout(timeOut);
+				((HttpComponentsClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
+			}
+		}
 	}
 	
 	/**
@@ -512,4 +512,5 @@ public abstract class ServiceClient<T extends BaseEntity<PK>, PK extends Seriali
 		log.info("Autowired... " + restTemplate.hashCode());
 		this.restTemplate = restTemplate;
 	}	
+	
 }

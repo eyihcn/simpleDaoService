@@ -169,14 +169,14 @@ public final class MyBeanUtil {
 	 }
 	
 	 
-	 public static <T> List<T> _mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
+	 public static <T> List<T> mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
 		
 		if (null == propertiesCol) {
 			return Collections.EMPTY_LIST;
 		}
 		List<T> entities = new ArrayList<T>();
 		for (Map<String,Object> properties: propertiesCol) {
-			entities.add(_mapToEntity(clazz, properties, ormPackageNames));
+			entities.add(mapToEntity(clazz, properties, ormPackageNames));
 		}
 		return entities;
 	}
@@ -190,7 +190,7 @@ public final class MyBeanUtil {
 	 * @param args
 	 * @return
 	 */
-	public static <T> T _mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
+	public static <T> T mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
 		
 		if(MapUtils.isEmpty(properties)) {
 			return null;
@@ -217,7 +217,7 @@ public final class MyBeanUtil {
 				}
 				// 【2】若为自定义的orm // com.tomtop.application.orm
 				if (isSelfDesignOrm(fieldClazz,ormPackageNames)) {
-					Object obj = _mapToEntity(fieldClazz, (Map<String, Object>) fieldValue, ormPackageNames);
+					Object obj = mapToEntity(fieldClazz, (Map<String, Object>) fieldValue, ormPackageNames);
 					if (null != obj) {
 						BeanUtils.setProperty(entity, fieldName, obj);
 					}
@@ -274,7 +274,7 @@ public final class MyBeanUtil {
 						if (isSelfDesignOrm(acRowTpyeClass,ormPackageNames)) {
 							Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) colProperties;
 							for (Map entityMap : listMap) {
-								col.add(_mapToEntity(acRowTpyeClass, entityMap, ormPackageNames));
+								col.add(mapToEntity(acRowTpyeClass, entityMap, ormPackageNames));
 							}
 						}else if (Collection.class.isAssignableFrom(acRowTpyeClass)) {
 							Collection colResult = null;
@@ -305,7 +305,7 @@ public final class MyBeanUtil {
 						// 若List的元素为自定义的orm，应该做递归处理
 						Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) colProperties;
 						for (Map entityMap : listMap) {
-							col.add(_mapToEntity(acTpyeClass, entityMap, ormPackageNames));
+							col.add(mapToEntity(acTpyeClass, entityMap, ormPackageNames));
 						}
 					}
 				}
@@ -375,7 +375,7 @@ public final class MyBeanUtil {
 							if (null == value) {
 								return null;
 							}
-							valOrm =  _mapToEntity(acRowTpyeClass, value, ormPackageNames);
+							valOrm =  mapToEntity(acRowTpyeClass, value, ormPackageNames);
 							if (null != valOrm) {
 								map.put(key,valOrm);
 							}
@@ -429,7 +429,7 @@ public final class MyBeanUtil {
 						if (null == value) {
 							return null;
 						}
-						valOrm =  _mapToEntity(valClass, value, ormPackageNames);
+						valOrm =  mapToEntity(valClass, value, ormPackageNames);
 						if (null != valOrm) {
 							map.put(key,valOrm);
 						}
@@ -518,7 +518,7 @@ public final class MyBeanUtil {
 		System.out.println("json =====>"+json);
 		Map<String,Object> properties = Json.fromJson(json, Map.class);
 		System.out.println("properties===>"+properties);
-		ComplicatedBean bean = MyBeanUtil._mapToEntity(ComplicatedBean.class, properties, "test");
+		ComplicatedBean bean = MyBeanUtil.mapToEntity(ComplicatedBean.class, properties, "test");
 		
 		System.out.println(bean.getNameToUser());
 		System.out.println(bean.getGoupToUsers());

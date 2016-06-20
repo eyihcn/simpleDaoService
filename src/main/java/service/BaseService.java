@@ -26,9 +26,14 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	protected static final String FIND_LIST = "findList";
 	protected static final String FIND_COLLECTION = "findCollection";
 	protected static final String COUNTS = "counts";
+	protected static final String BATCH_UPDATE_BY_IDS = "batchUpdateByIds";
+	protected static final String BATCH_UPDATE = "batchUpdate";
+	protected static final String BATCH_INSERT = "batchInsert";
 	protected static final String CHECK_EXISTS = "checkExists";
-	protected final String COLLECTION = "collection";
-	protected final String COLLECTION_COUNT = "collectionCount";
+	protected static final String COLLECTION = "collection";
+	protected static final String COLLECTION_COUNT = "collectionCount";
+	protected static final String UPDATES = "updates";
+	protected static final String IDS = "ids";
 
 	protected CommonDaoInter<T, PK> commonDaoInter;
 
@@ -106,7 +111,55 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		}
 		return serviceResponse;
 	}
+	
+	@RequestMapping(value = BATCH_UPDATE_BY_IDS, method = RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse batchUpdateByIds(@RequestBody Map<String, Object> request) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			List<Integer> ids = (List<Integer>) request.remove(IDS);
+			if (!commonDaoInter.batchUpdateByIds(ids,request)) {
+				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
+			} else {
+				serviceResponse.setResult(true);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
 
+	@RequestMapping(value = BATCH_UPDATE, method = RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse batchUpdate(@RequestBody List<Map<String, Object>> allUpdates) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			Map<Integer,Boolean> result =  commonDaoInter.batchUpdate(allUpdates);
+			serviceResponse.setResult(result);
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
+	@RequestMapping(value = BATCH_INSERT, method = RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse batchInsert(@RequestBody List<Map<String, Object>> batchToSave) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			if (!commonDaoInter.batchInsert(batchToSave)) {
+				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
+			}else {
+				serviceResponse.setResult(true);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
 
 	@RequestMapping(value = FIND_ONE, method = RequestMethod.POST)
 	@ResponseBody

@@ -21,6 +21,12 @@ public interface CommonDaoInter<T extends BaseEntity<PK>, PK extends Serializabl
 	
 	boolean saveOrUpdate(T entity);
 	
+	boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates);
+	
+	Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates); 
+
+	boolean batchInsert(List<Map<String, Object>> batchToSave); 
+	
 	boolean insert(Collection<T> batchToSave);
 	
 	boolean deleteById(PK id);
