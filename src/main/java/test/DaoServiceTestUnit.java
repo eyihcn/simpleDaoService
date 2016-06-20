@@ -58,7 +58,7 @@ public class DaoServiceTestUnit {
 	
 	@Test
 	public void testServiceClient_DeleteById() {
-		System.out.println(client.deleteEntityById(1L));
+		System.out.println(client.deleteById(1L));
 	}
 	
 	@Test
@@ -67,25 +67,25 @@ public class DaoServiceTestUnit {
 		pro.setName("pro-2-c");
 		pro.setUnitPrice(134);
 		System.out.println(client.updateEntity(pro));
-		System.out.println(client.createEntity(pro));
+		System.out.println(client.create(pro));
 	}
 	
 	
 	@Test
 	public void testServiceClient_Update() {
-		Product pro = client.findEntityById(7L);
+		Product pro = client.findById(7L);
 		System.out.println(pro);
 		pro.setName("pro-1-d");
 		client.updateEntity(pro);
-		System.out.println(client.findEntityById(7L));
+		System.out.println(client.findById(7L));
 	}
 	
 	@Test
 	public void testServiceClient_find() {
-		System.out.println(client.findEntityById(7L));
+		System.out.println(client.findById(7L));
 		Map<String,Object> query = new HashMap<String,Object>();
 		query.put("unitPrice", 12);
-		System.out.println(client.findEntityList(query, null, null));
+		System.out.println(client.findList(query, null, null));
 	}
 	
 	
