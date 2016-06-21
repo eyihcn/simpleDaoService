@@ -9,20 +9,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
 
 import service.ResponseStatus;
 import service.ServiceResponse;
@@ -42,12 +32,7 @@ import entity.ServerPortSetting;
  * 
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Serializable> {
-
-	final Logger log = LoggerFactory.getLogger(DaoServiceClient.class);
-	
-	private RestTemplate restTemplate ;//the RestTemplate is thread-safe once constructed
-	private static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap();
+public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Serializable> extends BaseServiceClient {
 
 	public static final String FIND_COLLECTION = "findCollection";
 	public static final String FIND_LIST = "findList";
@@ -64,25 +49,13 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public static final String BATCH_UPDATE_BY_IDS = "batchUpdateByIds";
 	public static final String BATCH_UPDATE = "batchUpdate";
 	public static final String BATCH_INSERT = "batchInsert";
-	public static final String SEPARATOR = "/";
 	public static final String IDS = "ids";
 	public static final String CODE = "code";
 	public static final String RESULT = "result";
-	public static MultiValueMap<String, Object> headers ;
 	private String modelName;
 	private Class<T> entityClass;
 	private String entityClassName; // simpleName
 	private String[] ormPackageNames;
-
-	private String host; // 主机
-	private String token; // 令牌
-	private int timeOut = -1;
-	
-	static {
-		MultiValueMap<String, Object> headers = new LinkedMultiValueMap();
-		headers.add("Accept", "application/json;charset=utf-8");
-		headers.add("Content-Type", "application/json;charset=utf-8");
-	}
 
 	public DaoServiceClient() {
 //		initRquestHostAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
@@ -95,40 +68,6 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		}
 		this.ormPackageNames = prepareOrmPackageNames();
 	}
-	
-	/**
-	 * 初始化请求的Host和Token
-	 */
-	protected void initRquestHostAndToken(String serviceTokenCode) {
-		String serviceAddressKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_ADDRESS";
-		String serviceTokenKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_TOKEN";
-		// 1. 先从缓存取host 和 token
-		Map<String, String> serviceConfig = serviceRouterConfigs.get(serviceTokenCode);
-		if (null != serviceConfig) {
-			host = ((String) serviceConfig.get("ADDRESS"));
-			token = ((String) serviceConfig.get("TOKEN"));
-			return;
-		}
-		// 2. 若缓存中没有，从系统变量中获取
-		host = System.getenv(serviceAddressKey);
-		if (null != host) {
-			token = System.getenv(serviceTokenKey);
-			return ;
-		}
-		// 3. 若系统变量中没有，查询数据库配置
-		ServerPortSetting sp =	new ServerSettingService().fetchServerPortSettingByCode(serviceTokenCode);
-		if (null == sp) {
-			throw new RuntimeException("no server config! serviceTokenCode=[" +serviceTokenCode+"]");
-		}
-		host = sp.getAddress();
-		token = sp.getToken();
-		// 缓存
-		serviceConfig = new HashMap<String, String>();
-		serviceConfig.put("ADDRESS", host);
-		serviceConfig.put("TOKEN", token);
-		serviceRouterConfigs.put(serviceTokenCode, serviceConfig);
-	}
-	
 	
 	/**
 	 * 初始化请求的Host和Token
@@ -177,32 +116,6 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	         return null;
 	        }
 	 }
-	 
-	/**
-	 * 
-	 * @param responseType 返回结果类型
-	 * @param requsetURL 请求URL
-	 * @param requestParam 请求参数
-	 * @param headers 请求头
-	 * @return
-	 */
-	public <E> E request(Class<E> responseType,String requsetURL,Object requestParam,MultiValueMap<String, Object> headers ) {
-		
-		E response = null;
-		if (!(requestParam instanceof String)) {
-			requestParam = requestParam==null?"{}":Json.toJson(requestParam);
-		}
-		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requsetURL).toString());
-		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requestParam).toString());
-		try {
-			HttpEntity httpEntity = new HttpEntity(requestParam, headers);
-			response = restTemplate.postForObject(requsetURL, httpEntity,responseType , new Object[0]);
-			_activateTimeOut();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return response;
-	}
 	
 	public Object requestForResult(String requestMethodName,Object requestParam) {
 		try {
@@ -222,25 +135,25 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @param requestParam
 	 * @return
 	 */
-	public Map<String,Object> getMapResponse(String methodName,Object requestParam) {
-		return  request(Map.class, _buildRequestURL(methodName), requestParam, headers);
+	public Map<String,Object> getMapResponse(String requestMethodName,Object requestParam) {
+		return getMapResponse(new StringBuilder(SEPARATOR).append(modelName )
+				.append( SEPARATOR ).append( entityClassName )
+				.append( SEPARATOR ).append(requestMethodName).toString(),requestParam);
 	}
 	
 	/**
 	 * serviceAdderss[ip:port] + serviceEntry[/模块名/实体名/方法] + ? +serviceToken=[token]
 	 * @return
 	 */
-	private  String _buildRequestURL(String methodName) {
-		return new StringBuilder(StringUtils.stripEnd(host, "/"))
-					.append( StringUtils.stripEnd(
-							new StringBuilder(SEPARATOR)
-							.append(modelName ).append( SEPARATOR )
-							.append( entityClassName ).append( SEPARATOR ).append(methodName).toString(), "/")
-							)
-							.append("?token=" + token).toString();
+	private  String _buildRequestURL(String requestMethodName) {
+		return buildRequestURL(host,
+				new StringBuilder(SEPARATOR).append(modelName )
+				.append( SEPARATOR ).append( entityClassName )
+				.append( SEPARATOR ).append(requestMethodName).toString()
+				, token);
 	}
 	
-	public Map<String, Object> findEntityCollection() {
+	public Map<String, Object> findCollection() {
 		return findCollection(null);
 	}
 
@@ -454,15 +367,6 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		}
 		return true;
 	}
-
-	public int getTimeOut() {
-		return timeOut;
-	}
-
-	public void setTimeOut(int timeOut) {
-		this.timeOut = timeOut;
-	}
-	
 	/**
 	 * 若无法满足实体映射可以被覆盖，提供自己的实现
 	 * 
@@ -482,21 +386,6 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return MyBeanUtil.mapToEntity(clazz, propertiesCol, ormPackageNames);
 	}
 	
-	private void _activateTimeOut() {
-		if (timeOut > 0) {
-			Object factory = restTemplate.getRequestFactory();
-			if ((factory instanceof SimpleClientHttpRequestFactory)) {
-				System.out.println("HttpUrlConnection is used");
-				((SimpleClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
-				((SimpleClientHttpRequestFactory) factory).setReadTimeout(timeOut);
-			} else if ((factory instanceof HttpComponentsClientHttpRequestFactory)) {
-				System.out.println("HttpClient is used");
-				((HttpComponentsClientHttpRequestFactory) factory).setReadTimeout(timeOut);
-				((HttpComponentsClientHttpRequestFactory) factory).setConnectTimeout(timeOut);
-			}
-		}
-	}
-	
 	/**
 	 * 提供默认实现，也可以被覆盖，提高orm的所有包名
 	 * 
@@ -506,11 +395,5 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		String[] names = { "" };
 		return names;
 	}
-	
-	@Autowired
-	public void setRestTemplate(RestTemplate restTemplate) {
-		log.info("Autowired... " + restTemplate.hashCode());
-		this.restTemplate = restTemplate;
-	}	
 	
 }
