@@ -48,7 +48,7 @@ public abstract class BaseServiceClient {
 	/**
 	 * 初始化请求的Host和Token
 	 */
-	protected void initRquestHostAndToken(String serviceTokenCode) {
+	protected void initServiceAddressAndToken(String serviceTokenCode) {
 		String serviceAddressKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_ADDRESS";
 		String serviceTokenKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_TOKEN";
 		// 1. 先从缓存取host 和 token

@@ -2,7 +2,7 @@ package service;
 
 public class ServiceResponse {
 
-	private Double version = Double.valueOf(1.0D);
+	private double version = 1.0;
 	private Integer code = ResponseStatus.SUCCESS.getCode();
 	private String description = ResponseStatus.SUCCESS.getDescription();
 	private Object result;
@@ -23,7 +23,7 @@ public class ServiceResponse {
 		this.description = description;
 	}
 
-	public ServiceResponse(Double version, Integer code, String description, Object result) {
+	public ServiceResponse(double version, Integer code, String description, Object result) {
 		super();
 		this.version = version;
 		this.code = code;
@@ -31,11 +31,11 @@ public class ServiceResponse {
 		this.result = result;
 	}
 
-	public Double getVersion() {
+	public double getVersion() {
 		return version;
 	}
 
-	public void setVersion(Double version) {
+	public void setVersion(double version) {
 		this.version = version;
 	}
 

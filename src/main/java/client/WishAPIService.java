@@ -32,7 +32,7 @@ public class WishAPIService extends BaseServiceClient {
 	
 	
 	public WishAPIService() {
-		initRquestHostAndToken("WISH_API_SERVICE");
+		initServiceAddressAndToken("WISH_API_SERVICE");
 	}
 	
 	public Map<String, Object> uploadWishTrackNumber(HashMap<String, Object> request) {

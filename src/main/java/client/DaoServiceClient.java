@@ -58,7 +58,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private String[] ormPackageNames;
 
 	public DaoServiceClient() {
-//		initRquestHostAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+//		initServiceAddressAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
 		initRquestHostAndToken_2(this.getClass().getAnnotation(ServiceCode.class).value());
 		ModelName modelNameClass = this.getClass().getAnnotation(ModelName.class);
 		if (modelNameClass != null) {
@@ -119,7 +119,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	
 	public Object requestForResult(String requestMethodName,Object requestParam) {
 		try {
-			ServiceResponse serviceResponse = request(ServiceResponse.class, _buildRequestURL(requestMethodName), requestParam,headers);
+			ServiceResponse serviceResponse = request(ServiceResponse.class, _buildDaoServiceRequestURL(requestMethodName), requestParam,headers);
 			if (serviceResponse == null) {
 				return null;
 			}
@@ -136,21 +136,21 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @return
 	 */
 	public Map<String,Object> getMapResponse(String requestMethodName,Object requestParam) {
-		return super.getMapResponse(new StringBuilder(SEPARATOR).append(modelName )
-				.append( SEPARATOR ).append( entityClassName )
-				.append( SEPARATOR ).append(requestMethodName).toString(),requestParam);
+		return super.getMapResponse(_buildDaoServiceEntry(requestMethodName),requestParam);
 	}
 	
 	/**
 	 * serviceAdderss[ip:port] + serviceEntry[/模块名/实体名/方法] + ? +serviceToken=[token]
 	 * @return
 	 */
-	private  String _buildRequestURL(String requestMethodName) {
-		return buildRequestURL(host,
-				new StringBuilder(SEPARATOR).append(modelName )
-				.append( SEPARATOR ).append( entityClassName )
-				.append( SEPARATOR ).append(requestMethodName).toString()
-				, token);
+	private  String _buildDaoServiceRequestURL(String requestMethodName) {
+		return super.buildRequestURL(host,_buildDaoServiceEntry(requestMethodName), token);
+	}
+	
+	private String _buildDaoServiceEntry(String requestMethodName) {
+		return new StringBuilder(SEPARATOR).append(modelName)
+					.append(SEPARATOR).append(entityClassName)
+					.append(SEPARATOR).append(requestMethodName).toString();
 	}
 	
 	public Map<String, Object> findCollection() {
