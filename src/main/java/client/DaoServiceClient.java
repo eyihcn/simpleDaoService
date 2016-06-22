@@ -136,7 +136,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @return
 	 */
 	public Map<String,Object> getMapResponse(String requestMethodName,Object requestParam) {
-		return getMapResponse(new StringBuilder(SEPARATOR).append(modelName )
+		return super.getMapResponse(new StringBuilder(SEPARATOR).append(modelName )
 				.append( SEPARATOR ).append( entityClassName )
 				.append( SEPARATOR ).append(requestMethodName).toString(),requestParam);
 	}
@@ -209,7 +209,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return checkSuccess(getMapResponse(SAVE,entityJson));
 	}
 
-	public boolean updateEntity(T entity) {
+	public boolean update(T entity) {
 		if (entity == null) {
 			return false;
 		}
@@ -237,7 +237,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return saveOrUpdate(Json.toJson(entity));
 	}
 	
-	public boolean saveOrUpdateEntity(Map<String,Object> properties) {
+	public boolean saveOrUpdate(Map<String,Object> properties) {
 		if (MapUtils.isEmpty(properties)) {
 			return false;
 		}
@@ -263,21 +263,21 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		if (CollectionUtils.isEmpty(allUpdates)){
 			return Collections.EMPTY_MAP;
 		}
-		return(Map<Integer,Boolean>)requestForResult(FIND_LIST,allUpdates);
+		return(Map<Integer,Boolean>)requestForResult(BATCH_UPDATE,allUpdates);
 	}
 	
-	public boolean batchInsert(List<Map<String, Object>> batchToSave) {
+	public Map<Integer,Boolean>  batchInsert(List<Map<String, Object>> batchToSave) {
 		if (CollectionUtils.isEmpty(batchToSave)){
-			return false;
+			return Collections.EMPTY_MAP;
 		}
-		return checkSuccess(getMapResponse(BATCH_INSERT,batchToSave));
+		return(Map<Integer,Boolean>)requestForResult(BATCH_INSERT,batchToSave);
 	}
 	
-	public boolean batchInsert(Collection<T> batchToSave) {
+	public Map<Integer,Boolean>  batchInsert(Collection<T> batchToSave) {
 		if (CollectionUtils.isEmpty(batchToSave)){
-			return false;
+			return Collections.EMPTY_MAP;
 		}
-		return checkSuccess(getMapResponse(BATCH_INSERT,batchToSave));
+		return(Map<Integer,Boolean>)requestForResult(BATCH_INSERT,batchToSave);
 	}
 	
 	public boolean delete(Map<String,Object> query) {

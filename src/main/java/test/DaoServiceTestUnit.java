@@ -66,7 +66,7 @@ public class DaoServiceTestUnit {
 		Product pro = new Product();
 		pro.setName("pro-2-c");
 		pro.setUnitPrice(134);
-		System.out.println(client.updateEntity(pro));
+		System.out.println(client.update(pro));
 		System.out.println(client.create(pro));
 	}
 	
@@ -76,7 +76,7 @@ public class DaoServiceTestUnit {
 		Product pro = client.findById(7L);
 		System.out.println(pro);
 		pro.setName("pro-1-d");
-		client.updateEntity(pro);
+		client.update(pro);
 		System.out.println(client.findById(7L));
 	}
 	
@@ -146,26 +146,35 @@ public class DaoServiceTestUnit {
 		String jsonParam = "1";
 		System.out.println(jsonParam);
 		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
-		ServiceResponse serviceResponse  = restTemplate.postForObject(requestUrl , httpEntity, ServiceResponse.class, new Object[0]);
-		System.out.println(Json.toJson(serviceResponse.getResult()));
+//		ServiceResponse serviceResponse  = restTemplate.postForObject(requestUrl , httpEntity, ServiceResponse.class, new Object[0]);
+//		System.out.println(Json.toJson(serviceResponse.getResult()));
+		
+		String string= restTemplate.postForObject(requestUrl , httpEntity, String.class, new Object[0]);
+		System.out.println(string);
 		
 	}
 	
 	
 	@Test
 	public void testCrudService_Save() {
+		long start = System.currentTimeMillis();
 		String requestUrl = url+"sale/Product/save";
 		String jsonParam = "{}";
-		Product product =new Product();
-		product.setName("pro-1-b");
-		product.setUnitPrice(1314);
-		jsonParam = Json.toJson(product);
+		Product product = null;
+		HttpEntity httpEntity = null;
+		for (int i=21557;i<31557;i++) {
+			product =new Product();
+			product.setName("pro-1-b-"+i);
+			product.setUnitPrice(1314+i);
+			jsonParam = Json.toJson(product);
+//			System.out.println(jsonParam);
+			httpEntity = new HttpEntity(jsonParam, headers);
+			String json  = restTemplate.postForObject(requestUrl , httpEntity, String.class, new Object[0]);
+			System.out.println(json);
+		}
+		System.out.println(System.currentTimeMillis()-start);
 		
-		System.out.println(jsonParam);
-		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
 		
-		String json  = restTemplate.postForObject(requestUrl , httpEntity, String.class, new Object[0]);
-		System.out.println(json);
 	}
 	
 	// ===================BaseMongoDao-Test======================

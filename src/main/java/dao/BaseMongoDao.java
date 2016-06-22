@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -296,21 +297,33 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return saveOrUpdate(entity);
 	}
 	
-	public boolean batchInsert(List<Map<String, Object>> batchToSave){
+	/**返回按不变集合顺序插入结果*/
+	public Map<Integer,Boolean> batchInsert(List<Map<String, Object>> batchToSave){
 		if (CollectionUtils.isEmpty(batchToSave)) {
-			return false;
+			return Collections.EMPTY_MAP;
 		}
 		return insert(MyBeanUtil.mapToEntity(entityClass, batchToSave));
 	}
 	
-	public boolean insert(Collection<T> batchToSave) {
-		try {
-			mongoTemplate.insert(batchToSave, collectionName);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
+	/**返回按不变集合顺序插入结果*/
+	public  Map<Integer,Boolean> insert(List<T> batchToSave) {
+		if (CollectionUtils.isEmpty(batchToSave)) {
+			return Collections.EMPTY_MAP;
 		}
-		return true;
+		Map<Integer,Boolean> result = new HashMap<Integer, Boolean>();
+		for (int i=0,len=batchToSave.size() ;i<len ;i++) {
+			try {
+				if (save(batchToSave.get(i))) {
+					result.put(Integer.valueOf(i), Boolean.valueOf(true));
+				}else {
+					result.put(Integer.valueOf(i), Boolean.valueOf(true));
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				result.put(Integer.valueOf(i), Boolean.valueOf(true));
+			}
+		}
+		return result;
 	}
 
 	public String getNextId() {
@@ -610,5 +623,6 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	public void setPkClass(Class<PK> pkClass) {
 		this.pkClass = pkClass;
 	}
+
 
 }

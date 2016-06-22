@@ -3,12 +3,10 @@ package client;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.stereotype.Component;
-
 import entity.ServerPortSetting;
 @ModelName("serverSetting")
 @ServiceCode("SERVER_PORT_SETTING")
-@Component
+//@Component
 public class ServerSettingService extends DaoServiceClient<ServerPortSetting, Integer> {
 
 	

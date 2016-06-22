@@ -135,8 +135,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse batchUpdate(@RequestBody List<Map<String, Object>> allUpdates) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			Map<Integer,Boolean> result =  commonDaoInter.batchUpdate(allUpdates);
-			serviceResponse.setResult(result);
+			serviceResponse.setResult(commonDaoInter.batchUpdate(allUpdates));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -148,16 +147,12 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	@ResponseBody
 	public ServiceResponse batchInsert(@RequestBody List<Map<String, Object>> batchToSave) {
 		ServiceResponse serviceResponse = new ServiceResponse();
-		try {
-			if (!commonDaoInter.batchInsert(batchToSave)) {
-				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
-			}else {
-				serviceResponse.setResult(true);
+			try {
+				serviceResponse.setResult(commonDaoInter.batchInsert(batchToSave));
+			} catch (Exception e) {
+				e.printStackTrace();
+				serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
-		}
 		return serviceResponse;
 	}
 

@@ -30,6 +30,7 @@ public abstract class BaseServiceClient {
 	final Logger log = LoggerFactory.getLogger(DaoServiceClient.class);
 
 	protected static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap();
+	@Autowired
 	protected RestTemplate restTemplate ;
 	protected String host; // 主机
 	protected String token; // 令牌
@@ -91,7 +92,14 @@ public abstract class BaseServiceClient {
 		if (!(requestParam instanceof String)) {
 			requestParam = requestParam==null?"{}":Json.toJson(requestParam);
 		}
-		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requsetURL).toString());
+		String tempURL = null;
+		int index = requsetURL.indexOf("?");
+		if (index > -1) {
+			tempURL = requsetURL.substring(0, index+1);
+		}else {
+			tempURL = requsetURL;
+		}
+		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(tempURL).toString());
 		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requestParam).toString());
 		try {
 			HttpEntity httpEntity = new HttpEntity(requestParam, headers);
@@ -149,9 +157,8 @@ public abstract class BaseServiceClient {
 		this.timeOut = timeOut;
 	}
 
-	@Autowired
 	public void setRestTemplate(RestTemplate restTemplate) {
-		log.info("Autowired... " + restTemplate.hashCode());
+		log.info("Autowired... " + restTemplate);
 		this.restTemplate = restTemplate;
 	}	
 }
