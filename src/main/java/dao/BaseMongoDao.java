@@ -5,12 +5,14 @@ import java.io.Serializable;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
@@ -200,9 +202,8 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	 */
 	public boolean saveOrUpdate(Map<String, Object> properties) {
 		try {
-			T object = getEntityClass().newInstance();
-			BeanUtils.populate(object, properties);
-			saveOrUpdate(object);
+			T entity = MyBeanUtil.mapToEntity(entityClass, properties);
+			saveOrUpdate(entity);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return Boolean.valueOf(false);
@@ -277,14 +278,13 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		try {
 			properties.remove("id");
 			properties.remove("_id");
-			T object = getEntityClass().newInstance();
-			BeanUtils.populate(object, properties);
-			saveOrUpdate(object);
+			T entity = MyBeanUtil.mapToEntity(entityClass, properties);
+			saveOrUpdate(entity);
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Boolean.valueOf(false);
+			return false;
 		}
-		return Boolean.valueOf(true);
+		return true;
 	}
 
 	public boolean save(T entity) {
@@ -297,15 +297,33 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return saveOrUpdate(entity);
 	}
 	
-	public boolean insert(Collection<T> batchToSave) {
-		try {
-			mongoTemplate.insert(batchToSave, collectionName);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return Boolean.valueOf(false);
+	/**返回按不变集合顺序插入结果*/
+	public Map<Integer,Boolean> batchInsert(List<Map<String, Object>> batchToSave){
+		if (CollectionUtils.isEmpty(batchToSave)) {
+			return Collections.EMPTY_MAP;
 		}
-
-		return Boolean.valueOf(true);
+		return insert(MyBeanUtil.mapToEntity(entityClass, batchToSave));
+	}
+	
+	/**返回按不变集合顺序插入结果*/
+	public  Map<Integer,Boolean> insert(List<T> batchToSave) {
+		if (CollectionUtils.isEmpty(batchToSave)) {
+			return Collections.EMPTY_MAP;
+		}
+		Map<Integer,Boolean> result = new HashMap<Integer, Boolean>();
+		for (int i=0,len=batchToSave.size() ;i<len ;i++) {
+			try {
+				if (save(batchToSave.get(i))) {
+					result.put(Integer.valueOf(i), Boolean.valueOf(true));
+				}else {
+					result.put(Integer.valueOf(i), Boolean.valueOf(true));
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				result.put(Integer.valueOf(i), Boolean.valueOf(true));
+			}
+		}
+		return result;
 	}
 
 	public String getNextId() {
@@ -486,41 +504,65 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		Criteria criteria = getRequestRestriction((HashMap<String, Object>) requestArgs.get("query"));
 		return Long.valueOf(count(criteria));
 	}
-
-	public Boolean batchUpdate(Map<String, Object> requestArgs) {
+	
+	/**
+	 * 根据ID批量更新
+	 * @param ids
+	 * @param updates
+	 * @return
+	 */
+	public boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates) {
 		try {
-			Object ids = requestArgs.get("ids");
-			if (null != ids) {
-				Update update = new Update();
-				Map updates = (Map) requestArgs.get("updates");
-				updates.remove("id");
-				updates.remove("ids");
-				updates.remove("class");
-				for (Object key : updates.keySet()) {
-					update.set(key.toString(), updates.get(key));
-				}
-				updateMulti(Criteria.where("_id").in((List) ids), update);
-			} else {
-				List<Map<String, Object>> allUpdates = (List) requestArgs.get("updates");
-				for (Object perUpdates : allUpdates) {
-					Object id = ((Map) perUpdates).get("id");
-					if (null != id) {
-						Update update = new Update();
-						((Map) perUpdates).remove("id");
-						((Map) perUpdates).remove("class");
-						for (Object key : ((Map) perUpdates).keySet()) {
-							update.set(key.toString(), ((Map) perUpdates).get(key));
-						}
-						findAndModify(Criteria.where("id").is(id), update);
-					}
-				}
+			if (CollectionUtils.isEmpty(ids) || MapUtils.isEmpty(updates)) {
+				return false;
 			}
+			Update update = new Update();
+			updates.remove("id");
+			updates.remove("ids");
+			updates.remove("class");
+			for (Object key : updates.keySet()) {
+				update.set(key.toString(), updates.get(key));
+			}
+			updateMulti(Criteria.where("_id").in((List) ids), update);
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Boolean.valueOf(false);
+			return false;
 		}
-
-		return Boolean.valueOf(true);
+		return true;
+	}
+	
+	/**
+	 * 传入update的List集合，批量更新
+	 * @param allUpdates
+	 * @return 
+	 * 			返回一个Map ：key---->id, value---->更新结果(true:成功)
+	 * 
+	 */
+	public Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates) {
+	
+			if (CollectionUtils.isEmpty(allUpdates)) {
+				return MapUtils.EMPTY_MAP;
+			}
+			Map<Integer,Boolean> result = new HashMap();
+			for (Map<String, Object> perUpdates : allUpdates) {
+				Integer id = (Integer) perUpdates.get("id");
+				try {
+					if (null != id) {
+						Update update = new Update();
+						perUpdates.remove("id");
+						perUpdates.remove("class");
+						for (Object key :  perUpdates.keySet()) {
+							update.set(key.toString(), perUpdates.get(key));
+						}
+						findAndModify(Criteria.where("id").is(id), update);
+						result.put(id, Boolean.valueOf(true));
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					result.put(id, Boolean.valueOf(true));
+				}
+			}
+		return result;
 	}
 
 	public BasicDBList group(Map<String, Object> requestArgs) throws Exception {
@@ -581,5 +623,6 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	public void setPkClass(Class<PK> pkClass) {
 		this.pkClass = pkClass;
 	}
+
 
 }

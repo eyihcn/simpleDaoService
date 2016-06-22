@@ -9,6 +9,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,7 +26,6 @@ import java.util.TreeSet;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.MapUtils;
 import org.junit.Test;
-import org.springframework.util.Assert;
 
 import test.ComplicatedBean;
 import test.User;
@@ -169,13 +169,17 @@ public final class MyBeanUtil {
 	 }
 	
 	 
-	 public static <T> List<T> _mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
-			List<T> entities = new ArrayList<T>();
-			for (Map<String,Object> properties: propertiesCol) {
-				entities.add(_mapToEntity(clazz, properties, ormPackageNames));
-			}
-			return entities;
+	 public static <T> List<T> mapToEntity(Class<T> clazz, Collection<Map<String, Object>> propertiesCol, String... ormPackageNames) {
+		
+		if (null == propertiesCol) {
+			return Collections.EMPTY_LIST;
 		}
+		List<T> entities = new ArrayList<T>();
+		for (Map<String,Object> properties: propertiesCol) {
+			entities.add(mapToEntity(clazz, properties, ormPackageNames));
+		}
+		return entities;
+	}
 
 	/**
 	 * 
@@ -186,7 +190,7 @@ public final class MyBeanUtil {
 	 * @param args
 	 * @return
 	 */
-	public static <T> T _mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
+	public static <T> T mapToEntity(Class<T> clazz, Map<String, Object> properties, String... ormPackageNames) {
 		
 		if(MapUtils.isEmpty(properties)) {
 			return null;
@@ -213,7 +217,7 @@ public final class MyBeanUtil {
 				}
 				// 【2】若为自定义的orm // com.tomtop.application.orm
 				if (isSelfDesignOrm(fieldClazz,ormPackageNames)) {
-					Object obj = _mapToEntity(fieldClazz, (Map<String, Object>) fieldValue, ormPackageNames);
+					Object obj = mapToEntity(fieldClazz, (Map<String, Object>) fieldValue, ormPackageNames);
 					if (null != obj) {
 						BeanUtils.setProperty(entity, fieldName, obj);
 					}
@@ -270,7 +274,7 @@ public final class MyBeanUtil {
 						if (isSelfDesignOrm(acRowTpyeClass,ormPackageNames)) {
 							Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) colProperties;
 							for (Map entityMap : listMap) {
-								col.add(_mapToEntity(acRowTpyeClass, entityMap, ormPackageNames));
+								col.add(mapToEntity(acRowTpyeClass, entityMap, ormPackageNames));
 							}
 						}else if (Collection.class.isAssignableFrom(acRowTpyeClass)) {
 							Collection colResult = null;
@@ -301,7 +305,7 @@ public final class MyBeanUtil {
 						// 若List的元素为自定义的orm，应该做递归处理
 						Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) colProperties;
 						for (Map entityMap : listMap) {
-							col.add(_mapToEntity(acTpyeClass, entityMap, ormPackageNames));
+							col.add(mapToEntity(acTpyeClass, entityMap, ormPackageNames));
 						}
 					}
 				}
@@ -371,7 +375,7 @@ public final class MyBeanUtil {
 							if (null == value) {
 								return null;
 							}
-							valOrm =  _mapToEntity(acRowTpyeClass, value, ormPackageNames);
+							valOrm =  mapToEntity(acRowTpyeClass, value, ormPackageNames);
 							if (null != valOrm) {
 								map.put(key,valOrm);
 							}
@@ -425,7 +429,7 @@ public final class MyBeanUtil {
 						if (null == value) {
 							return null;
 						}
-						valOrm =  _mapToEntity(valClass, value, ormPackageNames);
+						valOrm =  mapToEntity(valClass, value, ormPackageNames);
 						if (null != valOrm) {
 							map.put(key,valOrm);
 						}
@@ -471,15 +475,12 @@ public final class MyBeanUtil {
 	 * @return true:是自定义orm false:不是自定义orm
 	 */
 	public static boolean isSelfDesignOrm(Class<?> clazz, String... ormPackageNames) {
-		Assert.notNull(clazz);
-		if (clazz.getPackage().getName().startsWith("com.tomtop.application.orm")) {
+		List<String> packages  = Arrays.asList("com.tomtop.application.orm");
+		String clazzPackage = clazz.getPackage().getName();
+		if (packages.contains(clazzPackage)) {
 			return true;
 		}
-		if (null == ormPackageNames || ormPackageNames.length == 0) {
-			return false;
-		}
-		return Arrays.asList(ormPackageNames).contains(clazz.getPackage().getName());
-		
+		return (null == ormPackageNames ? false: Arrays.asList(ormPackageNames).contains(clazzPackage));
 	}
 	
 	@Test
@@ -517,7 +518,7 @@ public final class MyBeanUtil {
 		System.out.println("json =====>"+json);
 		Map<String,Object> properties = Json.fromJson(json, Map.class);
 		System.out.println("properties===>"+properties);
-		ComplicatedBean bean = MyBeanUtil._mapToEntity(ComplicatedBean.class, properties, "test");
+		ComplicatedBean bean = MyBeanUtil.mapToEntity(ComplicatedBean.class, properties, "test");
 		
 		System.out.println(bean.getNameToUser());
 		System.out.println(bean.getGoupToUsers());

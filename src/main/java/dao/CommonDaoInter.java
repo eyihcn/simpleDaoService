@@ -1,7 +1,6 @@
 package dao;
 
 import java.io.Serializable;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +20,13 @@ public interface CommonDaoInter<T extends BaseEntity<PK>, PK extends Serializabl
 	
 	boolean saveOrUpdate(T entity);
 	
-	boolean insert(Collection<T> batchToSave);
+	boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates);
+	
+	Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates); 
+
+	Map<Integer,Boolean>  batchInsert(List<Map<String, Object>> batchToSave); 
+	
+	Map<Integer,Boolean>  insert(List<T> batchToSave);
 	
 	boolean deleteById(PK id);
 

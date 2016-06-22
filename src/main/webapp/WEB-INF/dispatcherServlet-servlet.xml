@@ -20,12 +20,14 @@
 		<!-- <constructor-arg name="userCredentials" ref="mongoCredentials"/> -->
 	</bean>
 
+	<bean id="restTemplate" class="org.springframework.web.client.RestTemplate"/>
+	
 	<!-- <bean id="mongoCredentials" class="org.springframework.data.authentication.UserCredentials"> -->
 	<!-- <constructor-arg name="username" value="${mongo.username}" /> -->
 	<!-- <constructor-arg name="password" value="${mongo.password}" /> -->
 	<!-- </bean> -->
 
-	<mongo:mongo replica-set="192.168.216.55:10011">
+	<mongo:mongo replica-set="192.168.216.56:10011">
 		<mongo:options connections-per-host="60"
 			threads-allowed-to-block-for-connection-multiplier="150"
 			connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
