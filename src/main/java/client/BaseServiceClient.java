@@ -95,7 +95,7 @@ public abstract class BaseServiceClient {
 		String tempURL = null;
 		int index = requsetURL.indexOf("?");
 		if (index > -1) {
-			tempURL = requsetURL.substring(0, index+1);
+			tempURL = requsetURL.substring(0, index);
 		}else {
 			tempURL = requsetURL;
 		}
