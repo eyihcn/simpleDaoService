@@ -3,6 +3,7 @@ package client;
 import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,11 +45,12 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public static final String DELETE = "delete";
 	public static final String DELETE_BY_ID = "deleteById";
 	public static final String COUNTS = "counts";
-	public static final String COLLECTION = "collection";
-	public static final String COLLECTION_COUNT = "collectionCount";
+	public static final String CHECK_EXISTS = "checkExists";
 	public static final String BATCH_UPDATE_BY_IDS = "batchUpdateByIds";
 	public static final String BATCH_UPDATE = "batchUpdate";
 	public static final String BATCH_INSERT = "batchInsert";
+	public static final String COLLECTION = "collection";
+	public static final String COLLECTION_COUNT = "collectionCount";
 	public static final String IDS = "ids";
 	public static final String CODE = "code";
 	public static final String RESULT = "result";
@@ -171,9 +173,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 
 	public List<T> findList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
-		
-		String requestJson =  parseToRequestJson(query, sort, pagination);
-		return mapToEntity(entityClass, (Collection<Map<String, Object>>)requestForResult(FIND_LIST,requestJson), ormPackageNames);
+		return mapToEntity(entityClass, (Collection<Map<String, Object>>)requestForResult(FIND_LIST,parseToRequestJson(query, sort, pagination)), ormPackageNames);
 	}
 
 	public T findOne(Map<String, Object> query) {
@@ -190,7 +190,15 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		}
 		return mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_BY_ID,id.toString()), ormPackageNames);
 	}
+	
+	public boolean checkExists(Map<String, Object> query) {
+		return checkExists(query,null);
+	}
 
+	public boolean checkExists(Map<String, Object> query, Map<String, Object> sort) {
+		return Boolean.valueOf(requestForResult(CHECK_EXISTS,parseToRequestJson(query, sort, null)).toString()).booleanValue();
+	}
+	
 	public boolean create(T entity) {
 		if (entity == null) {
 			return false;
@@ -262,6 +270,33 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return checkSuccess(getMapResponse(BATCH_UPDATE_BY_IDS,updates));
 	}
 	
+	public Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates, int batchSize) {
+		
+		if (batchSize < 0 || batchSize > 5000) {
+			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
+		}
+		if (CollectionUtils.isEmpty(allUpdates)){
+			return Collections.EMPTY_MAP;
+		}
+		int updateSize = allUpdates.size();
+		if (updateSize <= batchSize) {
+			return batchUpdate(allUpdates);
+		}
+		Map<Integer,Boolean> result = new HashMap(updateSize);
+		List<Map<String,Object>> perUpdates = new ArrayList(batchSize);
+		for (int index=0; index < updateSize; index++) {
+			perUpdates.add(allUpdates.get(index));
+			if (index != 0 && (index % batchSize == 0)) {
+				result.putAll(batchUpdate(perUpdates));
+			}
+			perUpdates.clear();
+		}
+		if (perUpdates.size() > 0) {
+			result.putAll(batchUpdate(perUpdates));
+		}
+		return result;
+	}
+	
 	public Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates) {
 		if (CollectionUtils.isEmpty(allUpdates)){
 			return Collections.EMPTY_MAP;
@@ -274,6 +309,33 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			return Collections.EMPTY_MAP;
 		}
 		return(Map<Integer,Boolean>)requestForResult(BATCH_INSERT,batchToSave);
+	}
+	
+	public Map<Integer,Boolean> batchInsert(List<T> batchToSave, int batchSize) {
+		
+		if (batchSize < 0 || batchSize > 5000) {
+			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
+		}
+		if (CollectionUtils.isEmpty(batchToSave)){
+			return Collections.EMPTY_MAP;
+		}
+		int insertSize = batchToSave.size();
+		if (insertSize <= batchSize) {
+			return batchInsert(batchToSave);
+		}
+		Map<Integer,Boolean> result = new HashMap(insertSize);
+		List<T> perInsert = new ArrayList(batchSize);
+		for (int index=0; index < insertSize; index++) {
+			perInsert.add(batchToSave.get(index));
+			if (index != 0 && (index % batchSize == 0)) {
+				result.putAll(batchInsert(perInsert));
+			}
+			perInsert.clear();
+		}
+		if (perInsert.size() > 0) {
+			result.putAll(batchInsert(perInsert));
+		}
+		return result;
 	}
 	
 	public Map<Integer,Boolean>  batchInsert(Collection<T> batchToSave) {
