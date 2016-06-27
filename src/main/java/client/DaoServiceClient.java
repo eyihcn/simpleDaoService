@@ -161,10 +161,13 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		// 1. 将query转换为请求json参数
 		String requestJson = getCollectionRequestJson(query, false);
 		// 2. 请求daoService，拿到返回的result
-		Map<String, Object> map = (Map<String, Object>) requestForResult(FIND_COLLECTION,requestJson);
+		Map<String, Object> result = (Map<String, Object>) requestForResult(FIND_COLLECTION,requestJson);
+		if (MapUtils.isEmpty(result)) {
+			return Collections.EMPTY_MAP;
+		}
 		// 3. 将result(Map) 转换为实体
-		map.put(COLLECTION, mapToEntity(entityClass,(Collection<Map<String, Object>>)map.get(COLLECTION), ormPackageNames));
-		return map;
+		result.put(COLLECTION, mapToEntity(entityClass,(Collection<Map<String, Object>>)result.get(COLLECTION), ormPackageNames));
+		return result;
 	}
 
 	public List<T> findList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {

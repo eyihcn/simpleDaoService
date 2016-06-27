@@ -128,10 +128,10 @@ public class DaoServiceClientTest {
 		for (int i=0;i<50000;i++) {
 			product =new Product();
 			product.setName("pro-1-b-"+i);
-			product.setUnitPrice(1314+i);
+			product.setUnitPrice(i);
 			batchToSave.add(product);
 			if (i !=0 && (i%batchSize)==0) {
-				System.out.println(i-31557);
+				System.out.println(i);
 				System.out.println( productServiceClient.batchInsert(batchToSave));
 				batchToSave.clear();
 			}

@@ -31,7 +31,7 @@ public abstract class BaseServiceClient {
 
 	protected static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap();
 	@Autowired
-	protected RestTemplate restTemplate ;
+	protected RestTemplate restTemplate ; //once constructed ,is thread safe
 	protected String host; // 主机
 	protected String token; // 令牌
 	protected int timeOut = -1;
@@ -95,7 +95,7 @@ public abstract class BaseServiceClient {
 		String tempURL = null;
 		int index = requsetURL.indexOf("?");
 		if (index > -1) {
-			tempURL = requsetURL.substring(0, index+1);
+			tempURL = requsetURL.substring(0, index);
 		}else {
 			tempURL = requsetURL;
 		}
