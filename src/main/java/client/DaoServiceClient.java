@@ -54,6 +54,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public static final String IDS = "ids";
 	public static final String CODE = "code";
 	public static final String RESULT = "result";
+	public static final int MAX_BATCH_INSERT_SIZE=10000;
+	public static final int MAX_BATCH_UPDATE_SIZE=10000;
 	private String modelName;
 	private Class<T> entityClass;
 	private String entityClassName; // simpleName
@@ -272,7 +274,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	
 	public Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates, int batchSize) {
 		
-		if (batchSize < 0 || batchSize > 5000) {
+		if (batchSize < 0 || batchSize > MAX_BATCH_UPDATE_SIZE) {
 			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
 		}
 		if (CollectionUtils.isEmpty(allUpdates)){
@@ -288,8 +290,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			perUpdates.add(allUpdates.get(index));
 			if (index != 0 && (index % batchSize == 0)) {
 				result.putAll(batchUpdate(perUpdates));
+				perUpdates.clear();
 			}
-			perUpdates.clear();
 		}
 		if (perUpdates.size() > 0) {
 			result.putAll(batchUpdate(perUpdates));
@@ -313,7 +315,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	
 	public Map<Integer,Boolean> batchInsert(List<T> batchToSave, int batchSize) {
 		
-		if (batchSize < 0 || batchSize > 5000) {
+		if (batchSize < 0 || batchSize > MAX_BATCH_INSERT_SIZE) {
 			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
 		}
 		if (CollectionUtils.isEmpty(batchToSave)){
@@ -329,8 +331,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			perInsert.add(batchToSave.get(index));
 			if (index != 0 && (index % batchSize == 0)) {
 				result.putAll(batchInsert(perInsert));
+				perInsert.clear();
 			}
-			perInsert.clear();
 		}
 		if (perInsert.size() > 0) {
 			result.putAll(batchInsert(perInsert));

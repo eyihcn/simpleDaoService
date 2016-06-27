@@ -2,6 +2,8 @@ package test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.junit.After;
 import org.junit.Before;
@@ -18,15 +20,13 @@ import entity.Product;
 
 public class MongoTemplateDemo {
 
-	private final static String url = "http://localhost:8080/testdaoservice/";
-
-	private ApplicationContext applicationContext;
-	private MongoTemplate mongoDao;
+	ApplicationContext applicationContext;
+	MongoTemplate mongoDao;
 
 	@Before
 	public void setup() {
 		System.out.println("before");
-		this.applicationContext = new ClassPathXmlApplicationContext("classpath:/testMongoTemplate/mongo.xml");
+		this.applicationContext = new ClassPathXmlApplicationContext("classpath:/testMongoTemplate.xml");
 		this.mongoDao = this.applicationContext.getBean(MongoTemplate.class);
 	}
 
@@ -36,6 +36,41 @@ public class MongoTemplateDemo {
 
 	}
 
+	@Test
+	public void testThreadSafe () {
+		final Lock lock = new ReentrantLock();
+		//  查询出Id 为 80000的Product
+		// 10个线程 每个线程对unitPrice 循环更新100次， 每次自增1；
+		for (int i=0; i<10; i++) {
+			new Thread(new Runnable() {
+				
+				public void run() {
+					Long id = Long.valueOf(80000);
+					Query query = new Query();
+					query.addCriteria(Criteria.where("id").is(id));
+					Product product =null;
+//					Map<String,Object> update= new HashMap<String, Object>();
+//					update.put("id", id);
+					for (int index=0; index<100; index++) {
+						lock.lock();
+						product = mongoDao.findOne(query, Product.class);
+						System.out.println(product);
+						product.setUnitPrice(product.getUnitPrice()+1);
+						mongoDao.save(product);
+						lock.unlock();
+					}
+				}
+			}).start();
+		}
+		
+		try {
+			Thread.sleep(Integer.MAX_VALUE);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	@Test
 	public void testGet() {
 		Product p = new Product();

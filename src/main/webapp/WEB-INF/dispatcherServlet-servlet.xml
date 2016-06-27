@@ -27,11 +27,16 @@
 	<!-- <constructor-arg name="password" value="${mongo.password}" /> -->
 	<!-- </bean> -->
 
-	<mongo:mongo replica-set="192.168.216.56:10011">
-		<mongo:options connections-per-host="60"
-			threads-allowed-to-block-for-connection-multiplier="150"
-			connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
-	</mongo:mongo>
+<!-- 	<mongo:mongo replica-set="192.168.216.56:10011"> -->
+<!-- 		<mongo:options connections-per-host="60" -->
+<!-- 			threads-allowed-to-block-for-connection-multiplier="150" -->
+<!-- 			connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" /> -->
+<!-- 	</mongo:mongo> -->
+	<mongo:mongo host="192.168.216.204" port="27017">
+        <mongo:options connections-per-host="60"
+            threads-allowed-to-block-for-connection-multiplier="150"
+            connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
+    </mongo:mongo>
 	<!-- 配置视图解析器: 如何把 handler 方法返回值解析为实际的物理视图 
 	<bean
 		class="org.springframework.web.servlet.view.InternalResourceViewResolver">

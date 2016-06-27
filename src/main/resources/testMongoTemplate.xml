@@ -10,8 +10,9 @@
     http://www.springframework.org/schema/beans
     http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
-    <!-- 配置自定扫描的包 -->
+    <!-- 配置自定扫描的包
 	<context:component-scan base-package="action,dao,client"></context:component-scan>
+     -->
 
 	<bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
 		<constructor-arg name="mongo" ref="mongo" />
@@ -24,7 +25,7 @@
 	<!-- <constructor-arg name="password" value="${mongo.password}" /> -->
 	<!-- </bean> -->
 
-	<mongo:mongo replica-set="192.168.216.55:10011">
+	<mongo:mongo host="192.168.216.204" port="27017">
 		<mongo:options connections-per-host="60"
 			threads-allowed-to-block-for-connection-multiplier="150"
 			connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
