@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -17,8 +19,10 @@ import org.apache.commons.lang.StringUtils;
 
 import service.ResponseStatus;
 import service.ServiceResponse;
+import utils.BatchInsertTask;
 import utils.Json;
 import utils.MyBeanUtil;
+import utils.ThreadPoolSingleton;
 import entity.BaseEntity;
 import entity.ServerPortSetting;
 
@@ -338,6 +342,47 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		batchToSave = null;
 		if (perInsert.size() > 0) {
 			result.putAll(batchInsert(perInsert));
+		}
+		return result;
+	}
+	
+	public Map<Integer,Boolean> batchInsertByMultiThread(List<T> batchToSave, int batchSize){
+		
+		if (batchSize < 0 || batchSize > MAX_BATCH_INSERT_SIZE) {
+			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
+		}
+		if (CollectionUtils.isEmpty(batchToSave)){
+			return Collections.EMPTY_MAP;
+		}
+		int insertSize = batchToSave.size();
+		if (insertSize <= batchSize) {
+			return batchInsert(batchToSave);
+		}
+		AtomicInteger totalTaskCounts = new AtomicInteger((int) Math.ceil(((double) insertSize) / batchSize));
+		final Map<Integer,Boolean> result = new ConcurrentHashMap<Integer, Boolean>(insertSize);
+		ThreadPoolSingleton threadPoolSingleton = ThreadPoolSingleton.getInstance();
+		
+		List<T> perInsert = new ArrayList(batchSize);
+		for (int index=0; index < insertSize; index++) {
+			perInsert.add(batchToSave.get(index));
+			if (index != 0 && (index % batchSize == 0)) {
+				threadPoolSingleton.execute(new BatchInsertTask<T,PK>(this, perInsert, totalTaskCounts, result));
+				perInsert = new ArrayList(batchSize);
+			}
+		}
+		if (perInsert.size() > 0) {
+			threadPoolSingleton.execute(new BatchInsertTask<T,PK>(this, perInsert, totalTaskCounts, result));
+		}
+		while (true) {
+			if (totalTaskCounts.get() == 0) {
+				break;
+			}
+			try {
+				Thread.yield();
+				Thread.sleep(500);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 		return result;
 	}
