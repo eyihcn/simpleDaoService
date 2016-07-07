@@ -477,10 +477,20 @@ public final class MyBeanUtil {
 	public static boolean isSelfDesignOrm(Class<?> clazz, String... ormPackageNames) {
 		List<String> packages  = Arrays.asList("com.tomtop.application.orm");
 		String clazzPackage = clazz.getPackage().getName();
-		if (packages.contains(clazzPackage)) {
-			return true;
+		for (String packageName : packages) {
+			if (clazzPackage.startsWith(packageName)){
+				return true;
+			}
 		}
-		return (null == ormPackageNames ? false: Arrays.asList(ormPackageNames).contains(clazzPackage));
+		if (null == ormPackageNames || ormPackageNames.length ==0 ) {
+			return false;
+		}
+		for (String packageName : ormPackageNames) {
+			if (clazzPackage.startsWith(packageName)){
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	@Test

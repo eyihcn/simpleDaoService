@@ -293,6 +293,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 				perUpdates.clear();
 			}
 		}
+		allUpdates = null;
 		if (perUpdates.size() > 0) {
 			result.putAll(batchUpdate(perUpdates));
 		}
@@ -334,6 +335,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 				perInsert.clear();
 			}
 		}
+		batchToSave = null;
 		if (perInsert.size() > 0) {
 			result.putAll(batchInsert(perInsert));
 		}
