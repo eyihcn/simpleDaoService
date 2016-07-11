@@ -60,13 +60,17 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public static final String RESULT = "result";
 	public static final int MAX_BATCH_INSERT_SIZE=10000;
 	public static final int MAX_BATCH_UPDATE_SIZE=10000;
+	protected String host; // 主机
+	protected String token; // 令牌
 	private String modelName;
 	private Class<T> entityClass;
 	private String entityClassName; // simpleName
 	private String[] ormPackageNames;
 
 	public DaoServiceClient() {
-//		initServiceAddressAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+//		String[] hostAndToken = initServiceAddressAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+//		this.host  = hostAndToken[0];
+//		this.token = hostAndToken[1];
 		initRquestHostAndToken_2(this.getClass().getAnnotation(ServiceCode.class).value());
 		ModelName modelNameClass = this.getClass().getAnnotation(ModelName.class);
 		if (modelNameClass != null) {
@@ -144,7 +148,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * @return
 	 */
 	public Map<String,Object> getMapResponse(String requestMethodName,Object requestParam) {
-		return super.getMapResponse(_buildDaoServiceEntry(requestMethodName),requestParam);
+		return super.getMapResponse(host,_buildDaoServiceEntry(requestMethodName),token,requestParam);
 	}
 	
 	/**
@@ -155,6 +159,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return super.buildRequestURL(host,_buildDaoServiceEntry(requestMethodName), token);
 	}
 	
+	/**serviceEntry[/模块名/实体名/方法]*/
 	private String _buildDaoServiceEntry(String requestMethodName) {
 		return new StringBuilder(SEPARATOR).append(modelName)
 					.append(SEPARATOR).append(entityClassName)

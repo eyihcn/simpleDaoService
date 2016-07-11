@@ -32,8 +32,8 @@ public abstract class BaseServiceClient {
 	protected static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap();
 	@Autowired
 	protected RestTemplate restTemplate ; //once constructed ,is thread safe
-	protected String host; // 主机
-	protected String token; // 令牌
+//	protected String host; // 主机
+//	protected String token; // 令牌
 	protected int timeOut = -1;
 	
 	public static final String SEPARATOR = "/";
@@ -48,34 +48,39 @@ public abstract class BaseServiceClient {
 	/**
 	 * 初始化请求的Host和Token
 	 */
-	protected void initServiceAddressAndToken(String serviceTokenCode) {
+	protected String[] initServiceAddressAndToken(String serviceTokenCode) {
+		
 		String serviceAddressKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_ADDRESS";
 		String serviceTokenKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_TOKEN";
+		String[] hostAndToken = {"",""};
 		// 1. 先从缓存取host 和 token
 		Map<String, String> serviceConfig = serviceRouterConfigs.get(serviceTokenCode);
 		if (null != serviceConfig) {
-			host = ((String) serviceConfig.get("ADDRESS"));
-			token = ((String) serviceConfig.get("TOKEN"));
-			return;
+			hostAndToken[0] = ((String) serviceConfig.get("ADDRESS"));
+			hostAndToken[1] = ((String) serviceConfig.get("TOKEN"));
+			return hostAndToken;
 		}
 		// 2. 若缓存中没有，从系统变量中获取
-		host = System.getenv(serviceAddressKey);
-		if (null != host) {
-			token = System.getenv(serviceTokenKey);
-			return ;
+		hostAndToken[0] = System.getenv(serviceAddressKey);
+		if (null != hostAndToken[0]) {
+			hostAndToken[1] = System.getenv(serviceTokenKey);
+			if (null != hostAndToken[1]) {
+				return hostAndToken;
+			}
 		}
 		// 3. 若系统变量中没有，查询数据库配置
 		ServerPortSetting sp =	new ServerSettingService().fetchServerPortSettingByCode(serviceTokenCode);
 		if (null == sp) {
 			throw new RuntimeException("no server config! serviceTokenCode=[" +serviceTokenCode+"]");
 		}
-		host = sp.getAddress();
-		token = sp.getToken();
-		// 缓存
+		hostAndToken[0] = sp.getAddress();
+		hostAndToken[1] = sp.getToken();
+		// 4. 缓存
 		serviceConfig = new HashMap<String, String>();
-		serviceConfig.put("ADDRESS", host);
-		serviceConfig.put("TOKEN", token);
+		serviceConfig.put("ADDRESS", hostAndToken[0]);
+		serviceConfig.put("TOKEN", hostAndToken[1]);
 		serviceRouterConfigs.put(serviceTokenCode, serviceConfig);
+		return hostAndToken;
 	}
 	
 	/**
@@ -117,7 +122,7 @@ public abstract class BaseServiceClient {
 	 */
 	public  String buildRequestURL(String ServiceAdress,String ServiceEntry,String serviceToken) {
 		
-		StringBuilder url = new StringBuilder(StringUtils.stripEnd(ServiceAdress, "/")).append( StringUtils.stripEnd(ServiceEntry,"/"));
+		StringBuilder url = new StringBuilder(StringUtils.stripEnd(ServiceAdress, SEPARATOR)).append( StringUtils.stripEnd(ServiceEntry,SEPARATOR));
 		if (StringUtils.isNotBlank(serviceToken)) {
 			url.append("?token=" + serviceToken).toString();
 		}
@@ -130,8 +135,8 @@ public abstract class BaseServiceClient {
 	 * @param requestParam
 	 * @return
 	 */
-	public Map<String,Object> getMapResponse(String ServiceEntry, Object requestParam) {
-		return  request(Map.class, buildRequestURL(host,ServiceEntry,token), requestParam, headers);
+	public Map<String,Object> getMapResponse(String ServiceAdress,String ServiceEntry,String serviceToken, Object requestParam) {
+		return  request(Map.class, buildRequestURL(ServiceAdress,ServiceEntry,serviceToken), requestParam, headers);
 	}
 	
 	protected void _activateTimeOut() {
