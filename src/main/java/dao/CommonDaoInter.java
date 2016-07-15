@@ -23,6 +23,8 @@ public interface CommonDaoInter<T extends BaseEntity<PK>, PK extends Serializabl
 	boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates);
 	
 	Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates); 
+	
+	Map<Integer,Boolean> batchSaveOrUpdate(List<Map<String, Object>> allSaveOrUpdates); 
 
 	Map<Integer,Boolean>  batchInsert(List<Map<String, Object>> batchToSave); 
 	
@@ -41,5 +43,13 @@ public interface CommonDaoInter<T extends BaseEntity<PK>, PK extends Serializabl
 	List<T> findCollection(Map<String, Object> request);
 
 	Long findCollectionCount(Map<String, Object> request);
+	
+	List<PK> findIds(Map<String, Object> request);
+
+	/**
+	 *  根据主键的生产方式和偏移量，产生一个的主键
+	 * @param offset 偏移量
+	 */
+	PK generatePrimaryKeyByOffset(Integer offset) ;
 
 }

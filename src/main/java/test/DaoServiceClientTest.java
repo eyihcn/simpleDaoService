@@ -77,7 +77,7 @@ public class DaoServiceClientTest {
 	public void testCreateT() {
 		long start = System.currentTimeMillis();
 		Product product = null;
-		for (int i=0; i<10000; i++) {
+		for (int i=0; i<10; i++) {
 			product =new Product();
 			product.setName("pro-1-b-"+i);
 			product.setUnitPrice(i);
@@ -136,7 +136,17 @@ public class DaoServiceClientTest {
 
 	@Test
 	public void testBatchUpdateListOfMapOfStringObjectInt() {
-		fail("Not yet implemented");
+		List<Map<String, Object>> list = new ArrayList<Map<String,Object>>();
+		
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("id", 81756);
+		map.put("name", "81756");
+		list.add(map);
+		map = new HashMap<String, Object>();
+		map.put("id", 81755);
+		map.put("name", "81755");
+		list.add(map);
+		System.out.println(productServiceClient.batchUpdate(list).keySet().iterator().next().getClass());
 	}
 
 	@Test
@@ -154,23 +164,47 @@ public class DaoServiceClientTest {
 	// 10000  ---5000 --------17302ms
 	// 10000 ----10000 -------18528MS
 	// 10000 ----7500 ---------17342MS
+	// 20000 ----5000 ---------10425ms
 	@Test
 	public void testBatchInsertListOfTInt() {
-		
-		long start = System.currentTimeMillis();
+		int insertSize = 200;
 		Product product = null;
-		List<Product> batchToSave = new ArrayList<Product>(10000);
+		List<Product> batchToSave = new ArrayList<Product>(insertSize);
+		int batchSize = 50;
 //		int batchSize = 5000;
-		int batchSize = 7500;
+//		int batchSize = 7500;
 //		int batchSize = 10000;
-		for (int i=0;i<10000;i++) {
+		for (int i=0;i<insertSize;i++) {
 			product =new Product();
 			product.setName("pro-1-b-"+i);
 			product.setUnitPrice(i);
 			batchToSave.add(product);
 		}
+		System.out.println(productServiceClient.batchInsert(batchToSave, batchSize).size());
 		System.out.println(productServiceClient.batchInsert(batchToSave, batchSize));
-		System.out.println(System.currentTimeMillis()-start);
+		
+	}
+	//[main] INFO client.DaoServiceClient - batchInsert by single thread end :
+	//batchToSave.size() = 20000, totalTaskCounts = totalTaskCounts ,costTime : 5716ms
+	
+	// [main] INFO client.DaoServiceClient - batchInsertByMultiThread end 
+	// : batchToSave.size() = 20000, totalTaskCounts = 0, costTime : 17520ms
+	//
+	@Test
+	public void testbatchInsertByMultiThread() {
+		
+		Product product = null;
+		List<Product> batchToSave = new ArrayList<Product>(20000);
+		int batchSize = 5000;
+//		int batchSize = 7500;
+//		int batchSize = 10000;
+		for (int i=0;i<20000;i++) {
+			product =new Product();
+			product.setName("pro-1-b-"+i);
+			product.setUnitPrice(i);
+			batchToSave.add(product);
+		}
+		System.out.println(productServiceClient.batchInsertByMultiThread(batchToSave, batchSize));
 		
 	}
 
@@ -193,6 +227,50 @@ public class DaoServiceClientTest {
 	public void testCounts() {
 		fail("Not yet implemented");
 	}
+	
+	@Test
+	public void testBatchSaveOrUpdate() {
+		List<Long> keys =  productServiceClient.generatePrimaryKeys(5) ;
+		List<Product> batchToSave = new ArrayList<Product>(keys.size());
+		Product product = null;
+		for (int i=0;i<keys.size();i++) {
+			product =new Product();
+			product.setId(Long.valueOf(keys.get(i)));
+			product.setName("pro-1-b-"+i);
+			product.setUnitPrice(i);
+			batchToSave.add(product);	
+		}
+		System.out.println(productServiceClient.batchSaveOrUpdate(batchToSave));
+	}
+	
+	@Test
+	public void testSaveOrUpdate2() {
+	
+		Product product = null;
+		product =new Product();
+		product.setId(81806L);
+		product.setName("pro-1-b-");
+//		product.setUnitPrice(99);
+		System.out.println(productServiceClient.saveOrUpdate(product));
+	}
+	
+	@Test
+	public void testUpdate2() {
+	
+		Product product = null;
+		product =new Product();
+		product.setId(81806L);
+		product.setName("pro-1-bbbb-");
+//		product.setUnitPrice(99);
+		System.out.println(productServiceClient.update(product));
+	}
+	
+	@Test
+	public void testGeneratePrimaryKeys() {
+		List<Long> keys =  productServiceClient.generatePrimaryKeys(5) ;
+		System.out.println(keys.size());
+	}
+	
 
 	// 50001 -- 5000 -- 94547ms 
 	// 50002 -- 10000 -- 91705ms

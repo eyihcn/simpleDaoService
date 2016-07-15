@@ -1,38 +1,37 @@
-package utils;
+package client;
 
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import client.DaoServiceClient;
 import entity.BaseEntity;
 
-public class BatchInsertTask<T extends BaseEntity<PK>, PK extends Serializable>
+public class BatchUpdateTask<T extends BaseEntity<PK>, PK extends Serializable>
 		implements Runnable {
 
 	private DaoServiceClient<T, PK> serviceClient;
-	private List<T> perInsert;
+	private List<Map<String, Object>> perUpdate;
 	private AtomicInteger totalTaskCounts;
-	private Map<Integer, Boolean> result;
+	private Map<String, Boolean> result;
 
-	public BatchInsertTask() {
+	public BatchUpdateTask() {
 		super();
 	}
 
-	public BatchInsertTask(DaoServiceClient<T, PK> serviceClient,
-			List<T> perInsert, AtomicInteger totalTaskCounts,
-			Map<Integer, Boolean> result) {
+	public BatchUpdateTask(DaoServiceClient<T, PK> serviceClient,
+			List<Map<String, Object>> perUpdate, AtomicInteger totalTaskCounts,
+			Map<String, Boolean> result) {
 		super();
 		this.serviceClient = serviceClient;
-		this.perInsert = perInsert;
+		this.perUpdate = perUpdate;
 		this.totalTaskCounts = totalTaskCounts;
 		this.result = result;
 	}
 
 	public void run() {
 		try {
-			result.putAll(serviceClient.batchInsert(perInsert));
+			result.putAll(serviceClient.batchUpdate(perUpdate));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}finally{

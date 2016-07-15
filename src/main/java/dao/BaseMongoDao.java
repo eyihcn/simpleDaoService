@@ -48,7 +48,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	@Autowired
 	private MongoTemplate mongoTemplate;
 	private Class<T> entityClass; // 实体的运行是类
-	private Class<PK> pkClass; // 实体的运行是类
+	private Class<PK> pkClass; 
 	private String collectionName;// 创建的数据表的名称是类名的首字母小写
 
 	public BaseMongoDao() {
@@ -134,12 +134,10 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	}
 	
 	public List<T> findCollection(Map<String, Object> requestArgs) {
-		Assert.notNull(requestArgs);
 		return mongoTemplate.find(getQueryFromQueryParam(requestArgs), entityClass, collectionName);
 	}
 
 	public T findOne(Map<String, Object> requestArgs) {
-		Assert.notNull(requestArgs);
 		return mongoTemplate.findOne(getQueryFromQueryParam(requestArgs), entityClass, collectionName);
 	}
 	
@@ -150,6 +148,22 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	
 	public boolean checkExists(Map<String, Object> requestArgs) {
 		return mongoTemplate.exists(getQueryFromQueryParam(requestArgs), collectionName);
+	}
+	
+	/**根据查询条件或者实体id*/
+	public List<PK> findIds(Map<String, Object> request){
+		if (MapUtils.isEmpty(request)) {
+			return Collections.EMPTY_LIST;
+		}
+		List<T> entities =  findCollection(request);
+		if (CollectionUtils.isEmpty(entities)) {
+			return Collections.EMPTY_LIST;
+		}
+		List<PK> ids = new  ArrayList(entities.size());
+		for (T en : entities) {
+			ids.add(en.getId());
+		}
+		return ids;
 	}
 	
 	public Boolean delete(T object) {
@@ -211,6 +225,27 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return Boolean.valueOf(true);
 	}
 
+	/**
+	 * 若entity有id，根据id执行更新操作(更新之前不会先根据ID查找)<br/>
+	 * 若entity没有id，生成id，执行保存<br/>
+	 * 返回按不变集合顺序插入结果
+	 */
+	public Map<Integer,Boolean> batchSaveOrUpdate(List<Map<String, Object>> allSaveOrUpdates) {
+		if (CollectionUtils.isEmpty(allSaveOrUpdates)) {
+			return Collections.EMPTY_MAP;
+		}
+		Map<Integer,Boolean> result = new HashMap<Integer, Boolean>();
+		for (int i=1,len=allSaveOrUpdates.size() ;i<=len ;i++) {
+			try {
+					result.put(Integer.valueOf(i), Boolean.valueOf(saveOrUpdate(allSaveOrUpdates.get(i-1))));
+			} catch (Exception e) {
+				e.printStackTrace();
+				result.put(Integer.valueOf(i), Boolean.valueOf(false));
+			}
+		}
+		return result;	
+	}
+	
 	/**
 	 * 若entity有id，根据id执行更新操作
 	 * 若entity没有id，生成id，执行保存
@@ -311,26 +346,47 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 			return Collections.EMPTY_MAP;
 		}
 		Map<Integer,Boolean> result = new HashMap<Integer, Boolean>();
-		for (int i=0,len=batchToSave.size() ;i<len ;i++) {
+		for (int i=1,len=batchToSave.size() ;i<=len ;i++) {
 			try {
-				if (save(batchToSave.get(i))) {
+				if (save(batchToSave.get(i-1))) {
 					result.put(Integer.valueOf(i), Boolean.valueOf(true));
 				}else {
-					result.put(Integer.valueOf(i), Boolean.valueOf(true));
+					result.put(Integer.valueOf(i), Boolean.valueOf(false));
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				result.put(Integer.valueOf(i), Boolean.valueOf(true));
+				result.put(Integer.valueOf(i), Boolean.valueOf(false));
 			}
 		}
 		return result;
 	}
 
-	public String getNextId() {
-		return getNextId(getCollectionName());
-	}
 
-	public String getNextId(String seq_name) {
+	/**
+	 *  根据主键的生产方式和偏移量，产生一个的主键
+	 * @param offset 偏移量
+	 */
+	public PK generatePrimaryKeyByOffset(Integer offset) {
+		if (offset < 1) {
+			throw new IllegalArgumentException();
+		}
+		try {
+			System.out.println(pkClass);
+			return pkClass.getConstructor(String.class).newInstance(getIdByOffset(offset));
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public String getIdByOffset (Integer offset) {
+		return _getIdByOffset(getCollectionName(),offset);
+	}
+	
+	private String _getIdByOffset (String seq_name, Integer offset) {
+		if (offset < 1) {
+			throw new IllegalArgumentException();
+		}
 		String sequence_collection = "seq";
 		String sequence_field = "seq";
 
@@ -339,12 +395,32 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		DBObject query = new BasicDBObject();
 		query.put("_id", seq_name);
 
-		DBObject change = new BasicDBObject(sequence_field, Integer.valueOf(1));
+		DBObject change = new BasicDBObject(sequence_field, Integer.valueOf(offset));
 		DBObject update = new BasicDBObject("$inc", change);
 
 		DBObject res = seq.findAndModify(query, new BasicDBObject(), new BasicDBObject(), false, update, true, true);
 		return res.get(sequence_field).toString();
 	}
+
+	public String getNextId() {
+		return _getIdByOffset(getCollectionName(),1);
+	}
+
+//	public String getNextId(String seq_name) {
+//		String sequence_collection = "seq";
+//		String sequence_field = "seq";
+//
+//		DBCollection seq = mongoTemplate.getCollection(sequence_collection);
+//
+//		DBObject query = new BasicDBObject();
+//		query.put("_id", seq_name);
+//
+//		DBObject change = new BasicDBObject(sequence_field, Integer.valueOf(1));
+//		DBObject update = new BasicDBObject("$inc", change);
+//
+//		DBObject res = seq.findAndModify(query, new BasicDBObject(), new BasicDBObject(), false, update, true, true);
+//		return res.get(sequence_field).toString();
+//	}
 
 	public  void _sort(Query query,String orderAscField, String orderDescField) {
 		if (null != orderAscField) {
@@ -559,7 +635,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
-					result.put(id, Boolean.valueOf(true));
+					result.put(id, Boolean.valueOf(false));
 				}
 			}
 		return result;

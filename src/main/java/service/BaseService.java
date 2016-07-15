@@ -28,8 +28,12 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	protected static final String COUNTS = "counts";
 	protected static final String BATCH_UPDATE_BY_IDS = "batchUpdateByIds";
 	protected static final String BATCH_UPDATE = "batchUpdate";
+	protected static final String BATCH_SAVE_OR_UPDATE = "batchSaveOrUpdate";
 	protected static final String BATCH_INSERT = "batchInsert";
 	protected static final String CHECK_EXISTS = "checkExists";
+	protected static final String FIND_IDS = "findIds";
+	protected static final String GENERATE_PRIMARY_KEY_BY_OFFSET = "generatePrimaryKeyByOffset";
+	
 	protected static final String COLLECTION = "collection";
 	protected static final String COLLECTION_COUNT = "collectionCount";
 	protected static final String UPDATES = "updates";
@@ -136,6 +140,19 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			serviceResponse.setResult(commonDaoInter.batchUpdate(allUpdates));
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
+	@RequestMapping(value = BATCH_SAVE_OR_UPDATE, method = RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse batchSaveOrUpdate(@RequestBody List<Map<String, Object>> allSaveOrUpdates) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			serviceResponse.setResult( commonDaoInter.batchSaveOrUpdate(allSaveOrUpdates));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -256,6 +273,33 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			serviceResponse.setResult(commonDaoInter.checkExists(request));
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
+	@RequestMapping(value=FIND_IDS, method=RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse findIds(@RequestBody Map<String, Object> request) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			serviceResponse.setResult(commonDaoInter.findIds(request));
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
+	
+	@RequestMapping(value=GENERATE_PRIMARY_KEY_BY_OFFSET, method=RequestMethod.POST)
+    @ResponseBody
+	public ServiceResponse generatePrimaryKeyByOffset(@RequestBody Integer offset) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			serviceResponse.setResult(commonDaoInter.generatePrimaryKeyByOffset(offset));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);

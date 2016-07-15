@@ -15,7 +15,7 @@
 	<context:component-scan base-package="client"></context:component-scan>
 	<bean id="restTemplate" class="org.springframework.web.client.RestTemplate"></bean>
 	
-	<bean id="productServiceClient" class=" client.ProductServiceClient" scope="prototype"></bean>
+	<bean id="productServiceClient" class="client.ProductServiceClient"></bean>
 	
 	<mongo:mongo host="192.168.216.204" port="27017">
         <mongo:options connections-per-host="60"
