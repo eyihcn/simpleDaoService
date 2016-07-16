@@ -127,7 +127,7 @@ public class MongoTemplateDemo {
 		Update update = new Update().inc("price", 10);
 		// mongoDao.findAndModify(query, update, clazz);
 		// 返回满足查询条件的第一条记录（更新之前的entity），且更新第一条满足条件的记录
-		// Product findAndModify = mongoDao.findAndModify(query, update, clazz);
+//		 Product findAndModify = mongoDao.findAndModify(query, update, clazz);
 		FindAndModifyOptions options = FindAndModifyOptions.options();
 		options.returnNew(true); // 是否返回更新后的实体
 		// options.upsert(true);

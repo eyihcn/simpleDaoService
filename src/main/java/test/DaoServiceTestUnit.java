@@ -25,7 +25,7 @@ public class DaoServiceTestUnit {
 
 	String address = "";
 	ApplicationContext applicationContext;
-	String configLocation = "classpath:/testMongoTemplate/mongo.xml";
+	String configLocation = "classpath:/etc/spring/mongo.xml";
 	ProductDao productDao ;
 	RestTemplate restTemplate = null;
 	String url = "http://localhost:8080/testdaoservice/";
@@ -36,9 +36,9 @@ public class DaoServiceTestUnit {
 	public void setUp() {
 		System.out.println("setup...");
 		
+		
 		applicationContext = new ClassPathXmlApplicationContext(configLocation);
 		productDao = applicationContext.getBean(ProductDao.class);
-		
 		restTemplate = new RestTemplate();
 		headers = new LinkedMultiValueMap<String, Object>();
 		headers.add("Accept", "application/json;charset=utf-8");
@@ -243,7 +243,7 @@ public class DaoServiceTestUnit {
 		Product  p = new Product();
 		p.setName("test-ProB");
 		p.setUnitPrice(12);
-		System.out.println(productDao.saveOrUpdate(p));
+		System.out.println(productDao.saveByUpsert(p));
 	}
 	
 }

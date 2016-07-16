@@ -18,7 +18,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 
 	protected static final String SAVE = "save";
 	protected static final String UPDATE = "update";
-	protected static final String SAVE_OR_UPDATE = "saveOrUpdate";
+	protected static final String SAVE_BY_UPSERT = "saveByUpsert";
 	protected static final String FIND_ONE = "findOne";
 	protected static final String FIND_BY_ID = "findById";
 	protected static final String DELETE_BY_ID = "deleteById";
@@ -28,7 +28,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	protected static final String COUNTS = "counts";
 	protected static final String BATCH_UPDATE_BY_IDS = "batchUpdateByIds";
 	protected static final String BATCH_UPDATE = "batchUpdate";
-	protected static final String BATCH_SAVE_OR_UPDATE = "batchSaveOrUpdate";
+	protected static final String BATCH_SAVE_BY_UPSERT= "batchSaveByUpsert";
 	protected static final String BATCH_INSERT = "batchInsert";
 	protected static final String CHECK_EXISTS = "checkExists";
 	protected static final String FIND_IDS = "findIds";
@@ -99,12 +99,12 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		return serviceResponse;
 	}
 	
-	@RequestMapping(value = SAVE_OR_UPDATE, method = RequestMethod.POST)
+	@RequestMapping(value = SAVE_BY_UPSERT, method = RequestMethod.POST)
 	@ResponseBody
-	public ServiceResponse saveOrUpdate(@RequestBody Map<String, Object> request) {
+	public ServiceResponse saveByUpsert(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			if (!commonDaoInter.saveOrUpdate(request)) {
+			if (!commonDaoInter.saveByUpsert(request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -147,12 +147,12 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		return serviceResponse;
 	}
 	
-	@RequestMapping(value = BATCH_SAVE_OR_UPDATE, method = RequestMethod.POST)
+	@RequestMapping(value = BATCH_SAVE_BY_UPSERT, method = RequestMethod.POST)
 	@ResponseBody
 	public ServiceResponse batchSaveOrUpdate(@RequestBody List<Map<String, Object>> allSaveOrUpdates) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult( commonDaoInter.batchSaveOrUpdate(allSaveOrUpdates));
+			serviceResponse.setResult( commonDaoInter.batchSaveByUpsert(allSaveOrUpdates));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);

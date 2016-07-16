@@ -44,14 +44,14 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public static final String FIND_BY_ID = "findById";
 	public static final String SAVE = "save";
 	public static final String UPDATE = "update";
-	public static final String SAVE_OR_UPDATE = "saveOrUpdate";
+	public static final String SAVE_BY_UPSERT = "saveByUpsert";
 	public static final String DELETE = "delete";
 	public static final String DELETE_BY_ID = "deleteById";
 	public static final String COUNTS = "counts";
 	public static final String CHECK_EXISTS = "checkExists";
 	public static final String BATCH_UPDATE_BY_IDS = "batchUpdateByIds";
 	public static final String BATCH_UPDATE = "batchUpdate";
-	public static final String BATCH_SAVE_OR_UPDATE = "batchSaveOrUpdate";
+	public static final String BATCH_SAVE_BY_UPSERT= "batchSaveByUpsert";
 	public static final String BATCH_INSERT = "batchInsert";
 	public static final String FIND_IDS = "findIds";
 	public static final String GENERATE_PRIMARY_KEY_BY_OFFSET = "generatePrimaryKeyByOffset";
@@ -265,36 +265,36 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return checkSuccess(getMapResponse(UPDATE,jsonParam));
 	}
 	
-	public boolean saveOrUpdate(T entity) {
+	public boolean saveByUpsert(T entity) {
 		if (entity == null) {
 			return false;
 		}
-		return saveOrUpdate(Json.toJson(entity));
+		return saveByUpsert(Json.toJson(entity));
 	}
 	
-	public boolean saveOrUpdate(Map<String,Object> properties) {
+	public boolean saveByUpsert(Map<String,Object> properties) {
 		if (MapUtils.isEmpty(properties)) {
 			return false;
 		}
-		return saveOrUpdate(Json.toJson(properties));
+		return saveByUpsert(Json.toJson(properties));
 	}
 	
-	public boolean saveOrUpdate(String jsonParam) {
+	public boolean saveByUpsert(String jsonParam) {
 		if (StringUtils.isBlank(jsonParam)) {
 			return false;
 		}
-		return checkSuccess(getMapResponse(SAVE_OR_UPDATE,jsonParam));
+		return checkSuccess(getMapResponse(SAVE_BY_UPSERT,jsonParam));
 	}
 	
 	/**批量保存或者更新（没有id或者有id但数据库中无记录，则保存。否则更新),结果Map的key为List集合中的序列(这里的String有点坑)，value为更新的结果，true:成功*/
-	public Map<String,Boolean> batchSaveOrUpdate(List<T> allSaveOrUpdates) {
+	public Map<String,Boolean> batchSaveByUpsert(List<T> allSaveOrUpdates) {
 		if (CollectionUtils.isEmpty(allSaveOrUpdates)){
 			return Collections.EMPTY_MAP;
 		}
-		return batchSaveOrUpdate(allSaveOrUpdates, MAX_BATCH_UPDATE_SIZE);
+		return batchSaveByUpsert(allSaveOrUpdates, MAX_BATCH_UPDATE_SIZE);
 	}
 	
-	public Map<String,Boolean> batchSaveOrUpdate(List<T> allSaveOrUpdates, int batchSize) {
+	public Map<String,Boolean> batchSaveByUpsert(List<T> allSaveOrUpdates, int batchSize) {
 		
 		if (batchSize < 0 || batchSize > MAX_BATCH_INSERT_SIZE) {
 			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
@@ -304,7 +304,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		}
 		int insertSize = allSaveOrUpdates.size();
 		if (insertSize <= batchSize) {
-			return _batchSaveOrUpdate(allSaveOrUpdates);
+			return _batchSaveByUpsert(allSaveOrUpdates);
 		}
 		long start = System.currentTimeMillis(); // start
 		System.out.println(new StringBuilder("start to allSaveOrUpdates by single thread: batchToSave.size() = ").append(insertSize).append(", batchSize = ").append(batchSize).toString());
@@ -315,7 +315,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		for (int index=1; index <= insertSize; index++) {
 			per.add(allSaveOrUpdates.get(index-1));
 			if (index % batchSize == 0) {
-				perResult = _batchSaveOrUpdate(per);
+				perResult = _batchSaveByUpsert(per);
 				int seq_start  = (index / batchSize - 1) * batchSize ;
 				for (String seq : perResult.keySet()) {
 					result.put(Integer.valueOf((Integer.valueOf(seq)+seq_start)).toString(), perResult.get(seq));
@@ -325,7 +325,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		}
 		allSaveOrUpdates = null;
 		if (per.size() > 0) {
-			perResult = _batchSaveOrUpdate(per);
+			perResult = _batchSaveByUpsert(per);
 			int seq_start  = (insertSize / batchSize)* batchSize;
 			for (String seq : perResult.keySet()) {
 				result.put(Integer.valueOf((Integer.valueOf(seq)+seq_start)).toString(), perResult.get(seq));
@@ -337,11 +337,11 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return result;
 	}
 	
-	private Map<String,Boolean> _batchSaveOrUpdate(List<T> allSaveOrUpdates) {
+	private Map<String,Boolean> _batchSaveByUpsert(List<T> allSaveOrUpdates) {
 		if (CollectionUtils.isEmpty(allSaveOrUpdates)){
 			return Collections.EMPTY_MAP;
 		}
-		return(Map<String,Boolean>)requestForResult(BATCH_SAVE_OR_UPDATE,allSaveOrUpdates);
+		return(Map<String,Boolean>)requestForResult(BATCH_SAVE_BY_UPSERT,allSaveOrUpdates);
 	}
 	
 	public boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates) {

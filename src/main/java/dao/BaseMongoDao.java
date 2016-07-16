@@ -26,6 +26,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.util.Assert;
 
 import utils.CommonDaoHelper;
+import utils.Json;
 import utils.MyBeanUtil;
 
 import com.mongodb.BasicDBList;
@@ -209,15 +210,15 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	}
 	
 	/**
-	 * 若properties有id，根据id执行更新操作
-	 * 若properties没有id，生成id，执行保存
+	 * 若properties有id，根据id则会覆盖之前的记录<br/>
+	 * 若properties没有id(生成id) 或者 id没有对应的记录，则会插入新列
 	 * @param properties
 	 * @return
 	 */
-	public boolean saveOrUpdate(Map<String, Object> properties) {
+	public boolean saveByUpsert(Map<String, Object> properties) {
 		try {
 			T entity = MyBeanUtil.mapToEntity(entityClass, properties);
-			saveOrUpdate(entity);
+			saveByUpsert(entity);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return Boolean.valueOf(false);
@@ -225,19 +226,14 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return Boolean.valueOf(true);
 	}
 
-	/**
-	 * 若entity有id，根据id执行更新操作(更新之前不会先根据ID查找)<br/>
-	 * 若entity没有id，生成id，执行保存<br/>
-	 * 返回按不变集合顺序插入结果
-	 */
-	public Map<Integer,Boolean> batchSaveOrUpdate(List<Map<String, Object>> allSaveOrUpdates) {
+	public Map<Integer,Boolean> batchSaveByUpsert(List<Map<String, Object>> allSaveOrUpdates) {
 		if (CollectionUtils.isEmpty(allSaveOrUpdates)) {
 			return Collections.EMPTY_MAP;
 		}
 		Map<Integer,Boolean> result = new HashMap<Integer, Boolean>();
 		for (int i=1,len=allSaveOrUpdates.size() ;i<=len ;i++) {
 			try {
-					result.put(Integer.valueOf(i), Boolean.valueOf(saveOrUpdate(allSaveOrUpdates.get(i-1))));
+					result.put(Integer.valueOf(i), Boolean.valueOf(saveByUpsert(allSaveOrUpdates.get(i-1))));
 			} catch (Exception e) {
 				e.printStackTrace();
 				result.put(Integer.valueOf(i), Boolean.valueOf(false));
@@ -246,13 +242,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return result;	
 	}
 	
-	/**
-	 * 若entity有id，根据id执行更新操作
-	 * 若entity没有id，生成id，执行保存
-	 * @param entity
-	 * @return
-	 */
-	public boolean saveOrUpdate(T entity) {
+	public boolean saveByUpsert(T entity) {
 		try {
 			if (null == entity.getId()) {
 				entity.setId(pkClass.getConstructor(String.class).newInstance(getNextId()));
@@ -303,6 +293,10 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 
 		return true;
 	}
+	
+	public boolean update(T entity) {
+		return update(Json.fromJson(Json.toJson(entity), Map.class));
+	}
 
 	/**
 	 * 忽略id，插入新的文档
@@ -314,7 +308,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 			properties.remove("id");
 			properties.remove("_id");
 			T entity = MyBeanUtil.mapToEntity(entityClass, properties);
-			saveOrUpdate(entity);
+			saveByUpsert(entity);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
@@ -324,14 +318,9 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 
 	public boolean save(T entity) {
 		entity.setId(null);
-		return saveOrUpdate(entity);
+		return saveByUpsert(entity);
 	}
 
-	public boolean update(T entity) {
-		Assert.notNull(entity.getId());
-		return saveOrUpdate(entity);
-	}
-	
 	/**返回按不变集合顺序插入结果*/
 	public Map<Integer,Boolean> batchInsert(List<Map<String, Object>> batchToSave){
 		if (CollectionUtils.isEmpty(batchToSave)) {
@@ -620,23 +609,10 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 				return MapUtils.EMPTY_MAP;
 			}
 			Map<Integer,Boolean> result = new HashMap();
+			Integer id = null;
 			for (Map<String, Object> perUpdates : allUpdates) {
-				Integer id = (Integer) perUpdates.get("id");
-				try {
-					if (null != id) {
-						Update update = new Update();
-						perUpdates.remove("id");
-						perUpdates.remove("class");
-						for (Object key :  perUpdates.keySet()) {
-							update.set(key.toString(), perUpdates.get(key));
-						}
-						findAndModify(Criteria.where("id").is(id), update);
-						result.put(id, Boolean.valueOf(true));
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-					result.put(id, Boolean.valueOf(false));
-				}
+				id = Integer.valueOf(perUpdates.get("id").toString());
+				result.put(id, Boolean.valueOf(update(perUpdates)));
 			}
 		return result;
 	}
@@ -699,6 +675,5 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	public void setPkClass(Class<PK> pkClass) {
 		this.pkClass = pkClass;
 	}
-
 
 }

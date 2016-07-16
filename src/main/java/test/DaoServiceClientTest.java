@@ -262,7 +262,13 @@ public class DaoServiceClientTest {
 		product.setId(81806L);
 		product.setName("pro-1-bbbb-");
 //		product.setUnitPrice(99);
-		System.out.println(productServiceClient.update(product));
+//		System.out.println(productServiceClient.update(product));
+		
+		Map<String,Object> udpate = new HashMap<String, Object>();
+		udpate.put("id", 81806L);
+		udpate.put("name", "bbbb");
+		System.out.println(productServiceClient.update(udpate));
+		
 	}
 	
 	@Test
