@@ -31,7 +31,6 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	protected static final String BATCH_SAVE_BY_UPSERT= "batchSaveByUpsert";
 	protected static final String BATCH_INSERT = "batchInsert";
 	protected static final String CHECK_EXISTS = "checkExists";
-	protected static final String FIND_IDS = "findIds";
 	protected static final String GENERATE_PRIMARY_KEY_BY_OFFSET = "generatePrimaryKeyByOffset";
 	
 	protected static final String COLLECTION = "collection";
@@ -101,7 +100,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	
 	@RequestMapping(value = SAVE_BY_UPSERT, method = RequestMethod.POST)
 	@ResponseBody
-	public ServiceResponse saveByUpsert(@RequestBody Map<String, Object> request) {
+	public ServiceResponse saveOrUpdate(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			if (!commonDaoInter.saveByUpsert(request)) {
@@ -139,7 +138,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse batchUpdate(@RequestBody List<Map<String, Object>> allUpdates) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(commonDaoInter.batchUpdate(allUpdates));
+			serviceResponse.setResult( commonDaoInter.batchUpdate(allUpdates));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -164,12 +163,12 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	@ResponseBody
 	public ServiceResponse batchInsert(@RequestBody List<Map<String, Object>> batchToSave) {
 		ServiceResponse serviceResponse = new ServiceResponse();
-			try {
-				serviceResponse.setResult(commonDaoInter.batchInsert(batchToSave));
-			} catch (Exception e) {
-				e.printStackTrace();
-				serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
-			}
+		try {
+			serviceResponse.setResult(commonDaoInter.batchInsert(batchToSave));
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
 		return serviceResponse;
 	}
 
@@ -256,10 +255,10 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 
 	@RequestMapping(value=COUNTS, method=RequestMethod.POST)
     @ResponseBody
-	public ServiceResponse counts(@RequestBody Map<String, Object> request) {
+	public ServiceResponse counts(@RequestBody Map<String, Object> query) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(commonDaoInter.findCollectionCount(request));
+			serviceResponse.setResult(commonDaoInter.count(query));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -280,20 +279,6 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		return serviceResponse;
 	}
 	
-	@RequestMapping(value=FIND_IDS, method=RequestMethod.POST)
-	@ResponseBody
-	public ServiceResponse findIds(@RequestBody Map<String, Object> request) {
-		ServiceResponse serviceResponse = new ServiceResponse();
-		try {
-			serviceResponse.setResult(commonDaoInter.findIds(request));
-		} catch (Exception e) {
-			e.printStackTrace();
-			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
-		}
-		return serviceResponse;
-	}
-	
-	
 	@RequestMapping(value=GENERATE_PRIMARY_KEY_BY_OFFSET, method=RequestMethod.POST)
     @ResponseBody
 	public ServiceResponse generatePrimaryKeyByOffset(@RequestBody Integer offset) {
@@ -306,5 +291,4 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		}
 		return serviceResponse;
 	}
-
 }

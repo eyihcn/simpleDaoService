@@ -1,6 +1,5 @@
 package dao;
 
-
 import java.io.Serializable;
 import java.net.URLDecoder;
 import java.util.ArrayList;
@@ -38,33 +37,32 @@ import com.mongodb.WriteResult;
 import entity.BaseEntity;
 
 /**
- * @author eyihcn
+ * @author tomtop2016
  * @param <T>实体类型
  * @param <PK>主键类型
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > implements CommonDaoInter<T, PK>
-{
+public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> implements CommonDaoInter<T, PK> {
 
 	@Autowired
 	private MongoTemplate mongoTemplate;
 	private Class<T> entityClass; // 实体的运行是类
-	private Class<PK> pkClass; 
+	private Class<PK> pkClass; // 实体的运行是类
 	private String collectionName;// 创建的数据表的名称是类名的首字母小写
 
 	public BaseMongoDao() {
 		this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());
-		this.pkClass = 	MyBeanUtil.getSuperClassGenericType(this.getClass(), 1);
+		this.pkClass = MyBeanUtil.getSuperClassGenericType(this.getClass(), 1);
 		this.collectionName = _getCollectionName();
 	}
 
-	public BaseMongoDao(Class<T> entityClass,Class<PK> pkClass) {
+	public BaseMongoDao(Class<T> entityClass, Class<PK> pkClass) {
 		this.entityClass = entityClass;
 		this.pkClass = pkClass;
 		collectionName = _getCollectionName();
 	}
 
-	public BaseMongoDao(Class<T> entityClass, Class<PK> pkClass,String collectionName) {
+	public BaseMongoDao(Class<T> entityClass, Class<PK> pkClass, String collectionName) {
 		this.entityClass = entityClass;
 		this.pkClass = pkClass;
 		this.collectionName = collectionName;
@@ -74,21 +72,21 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return count(new HashMap<String, Object>());
 	}
 
-	public long count(Map<String,Object> query) {
+	public long count(Map<String, Object> query) {
 		return count(getRequestRestriction(query));
 	}
 
 	public long count(Criteria criteria) {
 		return mongoTemplate.count(new Query(criteria), collectionName);
 	}
-	
+
 	public Object group(Criteria criteria, GroupBy groupBy) {
 		if (null == criteria) {
 			return mongoTemplate.group(collectionName, groupBy, entityClass);
 		}
 		return mongoTemplate.group(criteria, collectionName, groupBy, entityClass);
 	}
-	
+
 	public List<T> find(Criteria criteria) {
 		Query query = new Query(criteria);
 		return mongoTemplate.find(query, entityClass, collectionName);
@@ -133,7 +131,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		Query query = new Query().skip(skip.intValue());
 		return mongoTemplate.findOne(query, entityClass, collectionName);
 	}
-	
+
 	public List<T> findCollection(Map<String, Object> requestArgs) {
 		return mongoTemplate.find(getQueryFromQueryParam(requestArgs), entityClass, collectionName);
 	}
@@ -141,32 +139,16 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	public T findOne(Map<String, Object> requestArgs) {
 		return mongoTemplate.findOne(getQueryFromQueryParam(requestArgs), entityClass, collectionName);
 	}
-	
+
 	public boolean checkExists(Criteria criteria) {
 		Query query = new Query(criteria).limit(1);
 		return null != mongoTemplate.findOne(query, entityClass, collectionName);
 	}
-	
+
 	public boolean checkExists(Map<String, Object> requestArgs) {
 		return mongoTemplate.exists(getQueryFromQueryParam(requestArgs), collectionName);
 	}
-	
-	/**根据查询条件或者实体id*/
-	public List<PK> findIds(Map<String, Object> request){
-		if (MapUtils.isEmpty(request)) {
-			return Collections.EMPTY_LIST;
-		}
-		List<T> entities =  findCollection(request);
-		if (CollectionUtils.isEmpty(entities)) {
-			return Collections.EMPTY_LIST;
-		}
-		List<PK> ids = new  ArrayList(entities.size());
-		for (T en : entities) {
-			ids.add(en.getId());
-		}
-		return ids;
-	}
-	
+
 	public Boolean delete(T object) {
 		try {
 			if (object.getId() == null) {
@@ -184,18 +166,16 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	public boolean delete(Criteria criteria) {
 		try {
 			WriteResult writeResult = mongoTemplate.remove(new Query(criteria), this.entityClass, collectionName);
-			return writeResult.getN()>0?true:false;
+			return writeResult.getN() > 0 ? true : false;
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
 		}
 	}
-	
-	public boolean delete(Map<String,Object> query) {
-		Assert.notNull(query);
-		return delete(getRequestRestriction(query));
-	}
 
+	public boolean delete(Map<String, Object> requestArgs) {
+		return delete(getRequestRestriction((Map<String, Object>) requestArgs.get("query")));
+	}
 
 	public boolean deleteById(PK id) {
 		T object = findById(id);
@@ -208,13 +188,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	public WriteResult updateMulti(Criteria criteria, Update update) {
 		return mongoTemplate.updateMulti(new Query(criteria), update, collectionName);
 	}
-	
-	/**
-	 * 若properties有id，根据id则会覆盖之前的记录<br/>
-	 * 若properties没有id(生成id) 或者 id没有对应的记录，则会插入新列
-	 * @param properties
-	 * @return
-	 */
+
 	public boolean saveByUpsert(Map<String, Object> properties) {
 		try {
 			T entity = MyBeanUtil.mapToEntity(entityClass, properties);
@@ -226,22 +200,6 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return Boolean.valueOf(true);
 	}
 
-	public Map<Integer,Boolean> batchSaveByUpsert(List<Map<String, Object>> allSaveOrUpdates) {
-		if (CollectionUtils.isEmpty(allSaveOrUpdates)) {
-			return Collections.EMPTY_MAP;
-		}
-		Map<Integer,Boolean> result = new HashMap<Integer, Boolean>();
-		for (int i=1,len=allSaveOrUpdates.size() ;i<=len ;i++) {
-			try {
-					result.put(Integer.valueOf(i), Boolean.valueOf(saveByUpsert(allSaveOrUpdates.get(i-1))));
-			} catch (Exception e) {
-				e.printStackTrace();
-				result.put(Integer.valueOf(i), Boolean.valueOf(false));
-			}
-		}
-		return result;	
-	}
-	
 	public boolean saveByUpsert(T entity) {
 		try {
 			if (null == entity.getId()) {
@@ -254,13 +212,27 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		}
 		return Boolean.valueOf(true);
 	}
-	
+
+	public Map<Integer, Boolean> batchSaveByUpsert(List<Map<String, Object>> allSaveOrUpdates) {
+		if (CollectionUtils.isEmpty(allSaveOrUpdates)) {
+			return Collections.EMPTY_MAP;
+		}
+		Map<Integer, Boolean> result = new HashMap<Integer, Boolean>();
+		for (int i = 1, len = allSaveOrUpdates.size(); i <= len; i++) {
+			try {
+				result.put(Integer.valueOf(i), Boolean.valueOf(saveByUpsert(allSaveOrUpdates.get(i - 1))));
+			} catch (Exception e) {
+				e.printStackTrace();
+				result.put(Integer.valueOf(i), Boolean.valueOf(false));
+			}
+		}
+		return result;
+	}
+
 	/**
-	 * 若id为空，更新失败
-	 * updateParam参数包含id 和 需要更新的字段
+	 * 若id为空，更新失败<br/>
+	 * updateParam参数包含id 和 需要更新的字段<br/>
 	 * 更新的字段参数可以直接放在updateParam中，也可以另为封装一个Map(key名为updates，value 为封装的map)
-	 * @param updateParam
-	 * @return
 	 */
 	public boolean update(Map<String, Object> updateParam) {
 		Assert.notEmpty(updateParam, "updateParam can not be empty");
@@ -270,14 +242,14 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		}
 		try {
 			Update update = new Update();
-			Map<String, Object> updates = (Map<String,Object>) updateParam.get("updates");
+			Map<String, Object> updates = (Map<String, Object>) updateParam.get("updates");
 			if (null != updates) {
 				updates.remove("id");
 				updates.remove("class");
 				for (String key : updates.keySet()) {
 					update.set(key, updates.get(key));
 				}
-			}else {
+			} else {
 				updateParam.remove("id");
 				updateParam.remove("class");
 				for (String key : updateParam.keySet()) {
@@ -293,16 +265,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 
 		return true;
 	}
-	
-	public boolean update(T entity) {
-		return update(Json.fromJson(Json.toJson(entity), Map.class));
-	}
 
-	/**
-	 * 忽略id，插入新的文档
-	 * @param properties 属性值Map
-	 * @return
-	 */
 	public boolean save(Map<String, Object> properties) {
 		try {
 			properties.remove("id");
@@ -321,27 +284,25 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return saveByUpsert(entity);
 	}
 
-	/**返回按不变集合顺序插入结果*/
-	public Map<Integer,Boolean> batchInsert(List<Map<String, Object>> batchToSave){
+	public boolean update(T entity) {
+		return update((Map) Json.fromJson(Json.toJson(entity), Map.class));
+	}
+
+	public Map<Integer, Boolean> batchInsert(List<Map<String, Object>> batchToSave) {
 		if (CollectionUtils.isEmpty(batchToSave)) {
 			return Collections.EMPTY_MAP;
 		}
 		return insert(MyBeanUtil.mapToEntity(entityClass, batchToSave));
 	}
-	
-	/**返回按不变集合顺序插入结果*/
-	public  Map<Integer,Boolean> insert(List<T> batchToSave) {
+
+	public Map<Integer, Boolean> insert(List<T> batchToSave) {
 		if (CollectionUtils.isEmpty(batchToSave)) {
 			return Collections.EMPTY_MAP;
 		}
-		Map<Integer,Boolean> result = new HashMap<Integer, Boolean>();
-		for (int i=1,len=batchToSave.size() ;i<=len ;i++) {
+		Map<Integer, Boolean> result = new HashMap<Integer, Boolean>();
+		for (int i = 1, len = batchToSave.size(); i <= len; i++) {
 			try {
-				if (save(batchToSave.get(i-1))) {
-					result.put(Integer.valueOf(i), Boolean.valueOf(true));
-				}else {
-					result.put(Integer.valueOf(i), Boolean.valueOf(false));
-				}
+				result.put(Integer.valueOf(i), Boolean.valueOf(save(batchToSave.get(i - 1))));
 			} catch (Exception e) {
 				e.printStackTrace();
 				result.put(Integer.valueOf(i), Boolean.valueOf(false));
@@ -350,29 +311,23 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return result;
 	}
 
-
-	/**
-	 *  根据主键的生产方式和偏移量，产生一个的主键
-	 * @param offset 偏移量
-	 */
-	public PK generatePrimaryKeyByOffset(Integer offset) {
+	public PK generatePrimaryKeyByOffset(int offset) {
 		if (offset < 1) {
 			throw new IllegalArgumentException();
 		}
 		try {
-			System.out.println(pkClass);
 			return pkClass.getConstructor(String.class).newInstance(getIdByOffset(offset));
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
 	}
-	
-	public String getIdByOffset (Integer offset) {
-		return _getIdByOffset(getCollectionName(),offset);
+
+	public String getIdByOffset(int offset) {
+		return _getIdByOffset(getCollectionName(), offset);
 	}
-	
-	private String _getIdByOffset (String seq_name, Integer offset) {
+
+	private String _getIdByOffset(String seq_name, int offset) {
 		if (offset < 1) {
 			throw new IllegalArgumentException();
 		}
@@ -392,26 +347,27 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	}
 
 	public String getNextId() {
-		return _getIdByOffset(getCollectionName(),1);
+		return _getIdByOffset(getCollectionName(), 1);
 	}
 
-//	public String getNextId(String seq_name) {
-//		String sequence_collection = "seq";
-//		String sequence_field = "seq";
-//
-//		DBCollection seq = mongoTemplate.getCollection(sequence_collection);
-//
-//		DBObject query = new BasicDBObject();
-//		query.put("_id", seq_name);
-//
-//		DBObject change = new BasicDBObject(sequence_field, Integer.valueOf(1));
-//		DBObject update = new BasicDBObject("$inc", change);
-//
-//		DBObject res = seq.findAndModify(query, new BasicDBObject(), new BasicDBObject(), false, update, true, true);
-//		return res.get(sequence_field).toString();
-//	}
+	// public String getNextId(String seq_name) {
+	// String sequence_collection = "seq";
+	// String sequence_field = "seq";
+	//
+	// DBCollection seq = mongoTemplate.getCollection(sequence_collection);
+	//
+	// DBObject query = new BasicDBObject();
+	// query.put("_id", seq_name);
+	//
+	// DBObject change = new BasicDBObject(sequence_field, Integer.valueOf(1));
+	// DBObject update = new BasicDBObject("$inc", change);
+	//
+	// DBObject res = seq.findAndModify(query, new BasicDBObject(), new
+	// BasicDBObject(), false, update, true, true);
+	// return res.get(sequence_field).toString();
+	// }
 
-	public  void _sort(Query query,String orderAscField, String orderDescField) {
+	public void _sort(Query query, String orderAscField, String orderDescField) {
 		if (null != orderAscField) {
 			String[] fields = orderAscField.split(",");
 			for (String field : fields) {
@@ -431,11 +387,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		}
 	}
 
-	/**
-	 * 根据类名获取集合的名称 :将类名首字母小写，转换为mongodb的集合名称
-	 * 
-	 * @return
-	 */
+	/** 根据类名获取集合的名称 :将类名首字母小写，转换为mongodb的集合名称 */
 	private String _getCollectionName() {
 		return StringUtils.uncapitalize(entityClass.getSimpleName());
 	}
@@ -460,12 +412,6 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return allOrCriteria;
 	}
 
-	/**
-	 * 根据操作符转换为Criteria查询条件
-	 * @param key
-	 * @param value
-	 * @return
-	 */
 	private List<Criteria> _parseCriteria(String key, Object value) {
 		if ("id".equals(key)) {
 			key = "_id";
@@ -508,8 +454,8 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 					criterias.add(Criteria.where(key).not().in((Collection) _compareValue));
 				} else if ("$where".equals(compare)) {
 					criterias.add(Criteria.where("$where").is(_compareValue));
-				}else if ("$elemMatch".equals(compare)){
-					Criteria childCriteria = getRequestRestriction((Map<String, Object>)_compareValue);
+				} else if ("$elemMatch".equals(compare)) {
+					Criteria childCriteria = getRequestRestriction((Map<String, Object>) _compareValue);
 					criterias.add(Criteria.where(key).elemMatch(childCriteria));
 				}
 			}
@@ -520,11 +466,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return criterias;
 	}
 
-	/**
-	 * 将Map查询参数转换为Criteria
-	 * @param query
-	 * @return
-	 */
+	/** 将Map查询参数转换为Criteria */
 	public Criteria getRequestRestriction(Map<String, Object> query) {
 		Criteria allCriteria = new Criteria();
 		List<Criteria> criterias = new ArrayList<Criteria>();
@@ -545,14 +487,15 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		return allCriteria;
 	}
 
+	/** 获取查询、排序、分页的条件 */
 	public Query getQueryFromQueryParam(Map<String, Object> queryParam) {
 		// 无参 ，默认是{}
-		Criteria criteria = getRequestRestriction((HashMap) queryParam.get("query"));
+		Criteria criteria = getRequestRestriction((Map) queryParam.get("query"));
 		// 无参 ，默认是id
 		String sortField = CommonDaoHelper.getRequestSortField(queryParam);
 		// 无参 ，默认是-1
 		String sortDirection = CommonDaoHelper.getRequestSortDirection(queryParam);
-		// 无参 ，默认是5000
+		// 无参 ，默认是10
 		Integer pageSize = CommonDaoHelper.getRequestPageSize(queryParam);
 		// 无参 ，默认是1
 		Integer pageNumber = CommonDaoHelper.getRequestPageNumber(queryParam);
@@ -564,18 +507,13 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 		}
 		return query;
 	}
-	
+
 	public Long findCollectionCount(Map<String, Object> requestArgs) {
 		Criteria criteria = getRequestRestriction((HashMap<String, Object>) requestArgs.get("query"));
 		return Long.valueOf(count(criteria));
 	}
-	
-	/**
-	 * 根据ID批量更新
-	 * @param ids
-	 * @param updates
-	 * @return
-	 */
+
+	/** 根据ID批量更新 */
 	public boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates) {
 		try {
 			if (CollectionUtils.isEmpty(ids) || MapUtils.isEmpty(updates)) {
@@ -588,32 +526,25 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 			for (Object key : updates.keySet()) {
 				update.set(key.toString(), updates.get(key));
 			}
-			updateMulti(Criteria.where("_id").in((List) ids), update);
+			updateMulti(Criteria.where("id").in((List) ids), update);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
 		}
 		return true;
 	}
-	
-	/**
-	 * 传入update的List集合，批量更新
-	 * @param allUpdates
-	 * @return 
-	 * 			返回一个Map ：key---->id, value---->更新结果(true:成功)
-	 * 
-	 */
-	public Map<Integer,Boolean> batchUpdate(List<Map<String, Object>> allUpdates) {
-	
-			if (CollectionUtils.isEmpty(allUpdates)) {
-				return MapUtils.EMPTY_MAP;
-			}
-			Map<Integer,Boolean> result = new HashMap();
-			Integer id = null;
-			for (Map<String, Object> perUpdates : allUpdates) {
-				id = Integer.valueOf(perUpdates.get("id").toString());
-				result.put(id, Boolean.valueOf(update(perUpdates)));
-			}
+
+	public Map<Integer, Boolean> batchUpdate(List<Map<String, Object>> allUpdates) {
+
+		if (CollectionUtils.isEmpty(allUpdates)) {
+			return MapUtils.EMPTY_MAP;
+		}
+		Map<Integer, Boolean> result = new HashMap();
+		Integer id = null;
+		for (Map<String, Object> perUpdates : allUpdates) {
+			id = Integer.valueOf(perUpdates.get("id").toString());
+			result.put(id, Boolean.valueOf(update(perUpdates)));
+		}
 		return result;
 	}
 
@@ -647,7 +578,7 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable > im
 	public void setMongoTemplate(MongoTemplate mongoTemplate) {
 		this.mongoTemplate = mongoTemplate;
 	}
-	
+
 	public MongoOperations getMongoOperation() {
 		return mongoTemplate;
 	}

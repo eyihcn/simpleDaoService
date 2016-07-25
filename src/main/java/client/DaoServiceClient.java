@@ -1,7 +1,5 @@
 package client;
 
-import java.io.BufferedInputStream;
-import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,9 +7,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -21,19 +16,19 @@ import service.ResponseStatus;
 import service.ServiceResponse;
 import utils.Json;
 import utils.MyBeanUtil;
+import utils.ServicePaginationHelper;
 import utils.ServiceQueryHelper;
 import entity.BaseEntity;
-import entity.ServerPortSetting;
 
 /**
- * daoService请求的client 抽象基本的crud ,数据库项目按系统模块部署到不同的服务器 1. 可以使用自己定义的请求Entry 2.
- * 可以使用系统约定的crud的Entry
- * 
- * 对于DaoService的分布在不同的服务器 
- * 模块名-------》主机IP
- * 
- * @author eyihcn
- * 
+ * @author tomtop2016
+ * @version May 24, 2016 8:34:38 PM
+ * @description 
+ * 			支持内部DAO Service请求 ,once constructed ,is thread safe
+ * @param <T>
+ * 			  实体类型
+ * @param <PK>
+ *            实体主键类型
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Serializable> extends BaseServiceClient {
@@ -53,7 +48,6 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public static final String BATCH_UPDATE = "batchUpdate";
 	public static final String BATCH_SAVE_BY_UPSERT= "batchSaveByUpsert";
 	public static final String BATCH_INSERT = "batchInsert";
-	public static final String FIND_IDS = "findIds";
 	public static final String GENERATE_PRIMARY_KEY_BY_OFFSET = "generatePrimaryKeyByOffset";
 	
 	public static final String COLLECTION = "collection";
@@ -61,8 +55,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public static final String IDS = "ids";
 	public static final String CODE = "code";
 	public static final String RESULT = "result";
-	public static final int MAX_BATCH_INSERT_SIZE=10000;
-	public static final int MAX_BATCH_UPDATE_SIZE=10000;
+	public static final int MAX_BATCH_INSERT_SIZE=5000;
+	public static final int MAX_BATCH_UPDATE_SIZE=5000;
 	protected String host; // 主机
 	protected String token; // 令牌
 	private String modelName;
@@ -70,73 +64,25 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	private Class<PK> pkClass; 
 	private String entityClassName; // simpleName
 	private String[] ormPackageNames;
-
+	
+	/**
+	 * @description
+	 * 			初始化host、token、className、modelName
+	 */
 	public DaoServiceClient() {
-//		String[] hostAndToken = initServiceAddressAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
-//		this.host  = hostAndToken[0];
-//		this.token = hostAndToken[1];
-		initRquestHostAndToken_2(this.getClass().getAnnotation(ServiceCode.class).value());
-		ModelName modelNameClass = this.getClass().getAnnotation(ModelName.class);
-		if (modelNameClass != null) {
-			this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());
-			this.entityClassName = this.entityClass.getSimpleName();
-			this.pkClass = 	MyBeanUtil.getSuperClassGenericType(this.getClass(), 1);
-			this.modelName =  modelNameClass.value();
-		}
+		String[] hostAndToken = initServiceAddressAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+		this.host  = hostAndToken[0];
+		this.token = hostAndToken[1];
+		this.modelName =  this.getClass().getAnnotation(ModelName.class).value();
+		this.pkClass = 	MyBeanUtil.getSuperClassGenericType(this.getClass(), 1);
+		this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());
+		this.entityClassName = this.entityClass.getSimpleName();
 		this.ormPackageNames = prepareOrmPackageNames();
 	}
 	
-	/**
-	 * 初始化请求的Host和Token
-	 */
-	protected void initRquestHostAndToken_2(String serviceTokenCode) {
-		String serviceAddressKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_ADDRESS";
-		String serviceTokenKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_TOKEN";
-		// 1. 先从缓存取host 和 token
-		Map<String, String> serviceConfig = serviceRouterConfigs.get(serviceTokenCode);
-		if (null != serviceConfig) {
-			host = ((String) serviceConfig.get("ADDRESS"));
-			token = ((String) serviceConfig.get("TOKEN"));
-			return;
-		}
-		// 2. 若缓存中没有，从系统变量中获取
-		host = readValue("dao_service_router.properties", serviceAddressKey);
-		if(host != null) {
-			token = readValue("dao_service_router.properties", serviceTokenKey);
-			return ;
-		}
-		// 3. 若系统变量中没有，查询数据库配置
-		ServerPortSetting sp =	new ServerSettingService().fetchServerPortSettingByCode(serviceTokenCode);
-		if (null == sp) {
-			throw new RuntimeException("no server config! serviceTokenCode=[" +serviceTokenCode+"]");
-		}
-		host = sp.getAddress();
-		token = sp.getToken();
-		// 缓存
-		serviceConfig = new HashMap<String, String>();
-		serviceConfig.put("ADDRESS", host);
-		serviceConfig.put("TOKEN", token);
-		serviceRouterConfigs.put(serviceTokenCode, serviceConfig);
-	}
-	
-	 //根据key读取value
-	 private  String readValue(String filePath,String key) {
-	  Properties props = new Properties();
-	        try {
-	         InputStream in = new BufferedInputStream (this.getClass().getClassLoader().getResourceAsStream(filePath));
-	         props.load(in);
-	         String value = props.getProperty (key);
-	         log.info(new StringBuilder("read properties : ").append(key).append(" = ").append(value).toString());
-            return value;
-	        } catch (Exception e) {
-	         e.printStackTrace();
-	         return null;
-	        }
-	 }
-	
-	public Object requestForResult(String requestMethodName,Object requestParam) {
+	protected Object  requestForResult(String requestMethodName,Object requestParam) {
 		try {
-			ServiceResponse serviceResponse = request(ServiceResponse.class, _buildDaoServiceRequestURL(requestMethodName), requestParam,headers);
+			ServiceResponse serviceResponse = super.request(ServiceResponse.class, _buildDaoServiceRequestURL(requestMethodName), requestParam,headers);
 			if (serviceResponse == null) {
 				return null;
 			}
@@ -147,30 +93,22 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return null;
 	}
 	
-	/**
-	 * 返回请求响应的result(内部DAO)
-	 * @param requestParam
-	 * @return
-	 */
-	public Map<String,Object> getMapResponse(String requestMethodName,Object requestParam) {
+	protected Map<String,Object> getMapResponse(String requestMethodName,Object requestParam) {
 		return super.getMapResponse(host,_buildDaoServiceEntry(requestMethodName),token,requestParam);
 	}
 	
 	/**
 	 * serviceAdderss[ip:port] + serviceEntry[/模块名/实体名/方法] + ? +serviceToken=[token]
-	 * @return
 	 */
 	private  String _buildDaoServiceRequestURL(String requestMethodName) {
 		return super.buildRequestURL(host,_buildDaoServiceEntry(requestMethodName), token);
 	}
-	
 	/**serviceEntry[/模块名/实体名/方法]*/
 	private String _buildDaoServiceEntry(String requestMethodName) {
 		return new StringBuilder(SEPARATOR).append(modelName)
 					.append(SEPARATOR).append(entityClassName)
 					.append(SEPARATOR).append(requestMethodName).toString();
 	}
-	
 	public Map<String, Object> findCollection() {
 		return findCollection(null);
 	}
@@ -181,15 +119,25 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		// 2. 请求daoService，拿到返回的result
 		Map<String, Object> result = (Map<String, Object>) requestForResult(FIND_COLLECTION,requestJson);
 		if (MapUtils.isEmpty(result)) {
-			return Collections.EMPTY_MAP;
+			return Collections.emptyMap();
 		}
 		// 3. 将result(Map) 转换为实体
 		result.put(COLLECTION, mapToEntity(entityClass,(Collection<Map<String, Object>>)result.get(COLLECTION), ormPackageNames));
 		return result;
 	}
-
+	
+	/**默认的分页查询条件PageNum为1，PageSize为5000*/
+	public List<T> findList(Map<String, Object> query) {
+		return findList(query,null, ServicePaginationHelper.build(5000, 1));
+	}
+	
 	public List<T> findList(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
-		return mapToEntity(entityClass, (Collection<Map<String, Object>>)requestForResult(FIND_LIST,parseToRequestJson(query, sort, pagination)), ormPackageNames);
+		
+		Collection<Map<String, Object>> collMap = (Collection<Map<String, Object>>)requestForResult(FIND_LIST,parseToRequestJson(query, sort, pagination));
+		if (CollectionUtils.isEmpty(collMap)) {
+			return Collections.emptyList();
+		}
+		return mapToEntity(entityClass, collMap, ormPackageNames);
 	}
 
 	public T findOne(Map<String, Object> query) {
@@ -197,7 +145,12 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	}
 	
 	public T findOne(Map<String, Object> query, Map<String, Object> sort) {
-		return mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_ONE,parseToRequestJson(query, sort, null)), ormPackageNames);
+		
+		Map<String, Object> entityMap = (Map<String, Object>) requestForResult(FIND_ONE,parseToRequestJson(query, sort, null));
+		if (MapUtils.isEmpty(entityMap)) {
+			return null;
+		}
+		return mapToEntity(entityClass, entityMap, ormPackageNames);
 	}
 
 	public T findById(PK id) {
@@ -207,22 +160,15 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return mapToEntity(entityClass, (Map<String, Object>) requestForResult(FIND_BY_ID,id.toString()), ormPackageNames);
 	}
 	
-	public List<PK> findIds(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
-		return (List<PK>) requestForResult(FIND_IDS,parseToRequestJson(query, sort, pagination));
-	}
-	
-	public List<PK> findIds(Map<String, Object> query) {
-		return findIds(query, null ,null);
-	}
-	
-	public boolean checkExists(Map<String, Object> query) {
-		return checkExists(query,null);
+	public List<T> findByIds(Collection<PK> idsColl) {
+		if (CollectionUtils.isEmpty(idsColl)) {
+			return Collections.EMPTY_LIST;
+		}
+		Map<String,Object> query = new HashMap(); 
+		ServiceQueryHelper.and(query, "id",idsColl,ServiceQueryHelper.IN);
+		return findList(query);
 	}
 
-	public boolean checkExists(Map<String, Object> query, Map<String, Object> sort) {
-		return Boolean.valueOf(requestForResult(CHECK_EXISTS,parseToRequestJson(query, sort, null)).toString()).booleanValue();
-	}
-	
 	public boolean create(T entity) {
 		if (entity == null) {
 			return false;
@@ -286,70 +232,46 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return checkSuccess(getMapResponse(SAVE_BY_UPSERT,jsonParam));
 	}
 	
-	/**批量保存或者更新（没有id或者有id但数据库中无记录，则保存。否则更新),结果Map的key为List集合中的序列(这里的String有点坑)，value为更新的结果，true:成功*/
-	public Map<String,Boolean> batchSaveByUpsert(List<T> allSaveOrUpdates) {
-		if (CollectionUtils.isEmpty(allSaveOrUpdates)){
-			return Collections.EMPTY_MAP;
-		}
-		return batchSaveByUpsert(allSaveOrUpdates, MAX_BATCH_UPDATE_SIZE);
-	}
-	
-	public Map<String,Boolean> batchSaveByUpsert(List<T> allSaveOrUpdates, int batchSize) {
-		
-		if (batchSize < 0 || batchSize > MAX_BATCH_INSERT_SIZE) {
-			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
-		}
-		if (CollectionUtils.isEmpty(allSaveOrUpdates)){
-			return Collections.EMPTY_MAP;
-		}
-		int insertSize = allSaveOrUpdates.size();
-		if (insertSize <= batchSize) {
-			return _batchSaveByUpsert(allSaveOrUpdates);
-		}
-		long start = System.currentTimeMillis(); // start
-		System.out.println(new StringBuilder("start to allSaveOrUpdates by single thread: batchToSave.size() = ").append(insertSize).append(", batchSize = ").append(batchSize).toString());
-	
-		Map<String,Boolean> result = new HashMap<String,Boolean>(insertSize);
-		List<T> per = new ArrayList<T>(batchSize);
-		Map<String,Boolean> perResult = null; 
-		for (int index=1; index <= insertSize; index++) {
-			per.add(allSaveOrUpdates.get(index-1));
-			if (index % batchSize == 0) {
-				perResult = _batchSaveByUpsert(per);
-				int seq_start  = (index / batchSize - 1) * batchSize ;
-				for (String seq : perResult.keySet()) {
-					result.put(Integer.valueOf((Integer.valueOf(seq)+seq_start)).toString(), perResult.get(seq));
-				}
-				per.clear();
-			}
-		}
-		allSaveOrUpdates = null;
-		if (per.size() > 0) {
-			perResult = _batchSaveByUpsert(per);
-			int seq_start  = (insertSize / batchSize)* batchSize;
-			for (String seq : perResult.keySet()) {
-				result.put(Integer.valueOf((Integer.valueOf(seq)+seq_start)).toString(), perResult.get(seq));
-			}
-		}
-		long costTime = System.currentTimeMillis() - start; //ms
-		System.out.println(new StringBuilder("allSaveOrUpdates by single thread end : ").append("batchToSave.size() = ").append(insertSize)
-				.append(" ,costTime : ").append(costTime).append("ms").toString());
-		return result;
-	}
-	
-	private Map<String,Boolean> _batchSaveByUpsert(List<T> allSaveOrUpdates) {
-		if (CollectionUtils.isEmpty(allSaveOrUpdates)){
-			return Collections.EMPTY_MAP;
-		}
-		return(Map<String,Boolean>)requestForResult(BATCH_SAVE_BY_UPSERT,allSaveOrUpdates);
-	}
-	
 	public boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates) {
 		if (CollectionUtils.isEmpty(ids) || MapUtils.isEmpty(updates)) {
 			return false;
 		}
 		updates.put(IDS, ids);
 		return checkSuccess(getMapResponse(BATCH_UPDATE_BY_IDS,updates));
+	}
+	/**批量更新结果Map的key为实体的id(这里的String有点坑)，value为更新的结果，true:成功*/
+	public Map<String ,Boolean> batchUpdate(List<Map<String, Object>> allUpdates, int batchSize) {
+		
+		if (batchSize < 0 || batchSize > MAX_BATCH_UPDATE_SIZE) {
+			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
+		}
+		if (CollectionUtils.isEmpty(allUpdates)){
+			return Collections.EMPTY_MAP;
+		}
+		int updateSize = allUpdates.size();
+		if (updateSize <= batchSize) {
+			return _batchUpdate(allUpdates);
+		}
+		long start = System.currentTimeMillis(); // start
+		System.out.println(new StringBuilder("start to batchUpdate by single thread: allUpdates.size() = ").append(updateSize).append(", batchSize = ").append(batchSize).toString());
+
+		Map<String,Boolean> result = new HashMap(updateSize);
+		List<Map<String,Object>> perUpdates = new ArrayList(batchSize);
+		for (int index=0; index < updateSize; index++) {
+			perUpdates.add(allUpdates.get(index));
+			if (index != 0 && (index % batchSize == 0)) {
+				result.putAll(_batchUpdate(perUpdates));
+				perUpdates.clear();
+			}
+		}
+		allUpdates = null;
+		if (perUpdates.size() > 0) {
+			result.putAll(_batchUpdate(perUpdates));
+		}
+		long costTime = System.currentTimeMillis() - start; //ms
+		System.out.println(new StringBuilder("batchUpdate by single thread end : ").append("allUpdates.size() = ").append(updateSize)
+				.append(", totalTaskCounts = ").append("totalTaskCounts ,").append("costTime : ").append(costTime).append("ms").toString());
+		return result;
 	}
 	
 	/**批量更新结果Map的key为实体的id(这里的String有点坑)，value为更新的结果，true:成功*/
@@ -367,100 +289,62 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return(Map<String,Boolean>)requestForResult(BATCH_UPDATE,allUpdates);
 	}
 	
-	public Map<String,Boolean> batchUpdate(List<Map<String, Object>> allUpdates, int batchSize) {
-		
-		if (batchSize < 0 || batchSize > MAX_BATCH_UPDATE_SIZE) {
-			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
-		}
-		if (CollectionUtils.isEmpty(allUpdates)){
+	/**批量保存或者更新（没有id或者有id但数据库中无记录，则保存。否则更新),结果Map的key为List集合中的序列(这里的String有点坑)，value为更新的结果，true:成功*/
+	public Map<String,Boolean> batchSaveByUpsert(List<T> allSaveByUpserts) {
+		if (CollectionUtils.isEmpty(allSaveByUpserts)){
 			return Collections.EMPTY_MAP;
 		}
-		int updateSize = allUpdates.size();
-		if (updateSize <= batchSize) {
-			return _batchUpdate(allUpdates);
-		}
-		long start = System.currentTimeMillis(); // start
-		log.info(new StringBuilder("start to batchUpdate by single thread: allUpdates.size() = ").append(updateSize).append(", batchSize = ").append(batchSize).toString());
-
-		Map<String,Boolean> result = new HashMap(updateSize);
-		List<Map<String,Object>> perUpdates = new ArrayList(batchSize);
-		for (int index=0; index < updateSize; index++) {
-			perUpdates.add(allUpdates.get(index));
-			if (index != 0 && (index % batchSize == 0)) {
-				result.putAll(_batchUpdate(perUpdates));
-				perUpdates.clear();
-			}
-		}
-		allUpdates = null;
-		if (perUpdates.size() > 0) {
-			result.putAll(_batchUpdate(perUpdates));
-		}
-		long costTime = System.currentTimeMillis() - start; //ms
-		log.info(new StringBuilder("batchUpdate by single thread end : ").append("allUpdates.size() = ").append(updateSize)
-				.append(", totalTaskCounts = ").append("totalTaskCounts ,").append("costTime : ").append(costTime).append("ms").toString());
-		return result;
+		return batchSaveByUpsert(allSaveByUpserts, MAX_BATCH_UPDATE_SIZE);
 	}
 	
-	public Map<String,Boolean> batchUpdateByMultiThread(List<Map<String, Object>> allUpdates, int batchSize){
+	public Map<String,Boolean> batchSaveByUpsert(List<T> allSaveByUpserts, int batchSize) {
 		
 		if (batchSize < 0 || batchSize > MAX_BATCH_INSERT_SIZE) {
 			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
 		}
-		if (CollectionUtils.isEmpty(allUpdates)){
+		if (CollectionUtils.isEmpty(allSaveByUpserts)){
 			return Collections.EMPTY_MAP;
 		}
-		int updateSize = allUpdates.size();
-		if (updateSize <= batchSize) {
-			return _batchUpdate(allUpdates);
+		int insertSize = allSaveByUpserts.size();
+		if (insertSize <= batchSize) {
+			return _batchSaveByUpsert(allSaveByUpserts);
 		}
 		long start = System.currentTimeMillis(); // start
-		log.info(new StringBuilder("start to batchUpdateByMultiThread: allUpdates.size() = ").append(updateSize).append(", batchSize = ").append(batchSize).toString());
-
-		AtomicInteger totalTaskCounts = new AtomicInteger((int) Math.ceil(((double) updateSize) / batchSize));
-		final Map<String,Boolean> result = new ConcurrentHashMap<String, Boolean>(updateSize);
-		ThreadPoolSingleton threadPoolSingleton = ThreadPoolSingleton.getInstance();
-		
-		List<Map<String, Object>> perUpdate = new ArrayList(batchSize);
-		for (int index=0; index < updateSize; index++) {
-			perUpdate.add(allUpdates.get(index));
-			if (index != 0 && (index % batchSize == 0)) {
-				threadPoolSingleton.execute(new BatchUpdateTask<T,PK>(this, perUpdate, totalTaskCounts, result));
-				perUpdate = new ArrayList(batchSize);
+		System.out.println(new StringBuilder("start to allSaveOrUpdates by single thread: batchToSave.size() = ").append(insertSize).append(", batchSize = ").append(batchSize).toString());
+	
+		Map<String,Boolean> result = new HashMap<String,Boolean>(insertSize);
+		List<T> per = new ArrayList<T>(batchSize);
+		Map<String,Boolean> perResult = null; 
+		for (int index=1; index <= insertSize; index++) {
+			per.add(allSaveByUpserts.get(index-1));
+			if (index % batchSize == 0) {
+				perResult = _batchSaveByUpsert(per);
+				int seq_start  = (index / batchSize - 1) * batchSize ;
+				for (String seq : perResult.keySet()) {
+					result.put(Integer.valueOf((Integer.valueOf(seq)+seq_start)).toString(), perResult.get(seq));
+				}
+				per.clear();
 			}
 		}
-		if (perUpdate.size() > 0) {
-			threadPoolSingleton.execute(new BatchUpdateTask<T,PK>(this, perUpdate, totalTaskCounts, result));
-		}
-		while (true) {
-			if (totalTaskCounts.get() == 0) {
-				break;
-			}
-			try {
-				Thread.yield();
-				Thread.sleep(500);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+		allSaveByUpserts = null;
+		if (per.size() > 0) {
+			perResult = _batchSaveByUpsert(per);
+			int seq_start  = (insertSize / batchSize)* batchSize;
+			for (String seq : perResult.keySet()) {
+				result.put(Integer.valueOf((Integer.valueOf(seq)+seq_start)).toString(), perResult.get(seq));
 			}
 		}
 		long costTime = System.currentTimeMillis() - start; //ms
-		log.info(new StringBuilder("batchUpdateByMultiThread end : ").append("allUpdates.size() = ").append(updateSize)
-				.append(", totalTaskCounts = ").append("totalTaskCounts ,").append("costTime : ").append(costTime).append("ms").toString());
+		System.out.println(new StringBuilder("allSaveOrUpdates by single thread end : ").append("batchToSave.size() = ").append(insertSize)
+				.append(" ,costTime : ").append(costTime).append("ms").toString());
 		return result;
 	}
 	
-	
-	private Map<String,Boolean>  _batchInsert(List<T> batchToSave) {
-		if (CollectionUtils.isEmpty(batchToSave)){
+	private Map<String,Boolean> _batchSaveByUpsert(List<T> allSaveByUpserts) {
+		if (CollectionUtils.isEmpty(allSaveByUpserts)){
 			return Collections.EMPTY_MAP;
 		}
-		return(Map<String,Boolean>)requestForResult(BATCH_INSERT,batchToSave);
-	}
-	
-	public Map<String,Boolean>  batchInsert(List<T> batchToSave) {
-		if (CollectionUtils.isEmpty(batchToSave)){
-			return Collections.EMPTY_MAP;
-		}
-		return batchInsert(batchToSave,MAX_BATCH_INSERT_SIZE);
+		return(Map<String,Boolean>)requestForResult(BATCH_SAVE_BY_UPSERT,allSaveByUpserts);
 	}
 	
 	/**批量插入结果Map的key为实体的id(这里的String有点坑)，value为更新的结果，true:成功*/
@@ -477,7 +361,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			return _batchInsert(batchToSave);
 		}
 		long start = System.currentTimeMillis(); // start
-		log.info(new StringBuilder("start to batchInsert by single thread: batchToSave.size() = ").append(insertSize).append(", batchSize = ").append(batchSize).toString());
+		System.out.println(new StringBuilder("start to batchInsert by single thread: batchToSave.size() = ").append(insertSize).append(", batchSize = ").append(batchSize).toString());
 	
 		Map<String,Boolean> result = new HashMap<String,Boolean>(insertSize);
 		List<T> perInsert = new ArrayList<T>(batchSize);
@@ -502,62 +386,32 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 			}
 		}
 		long costTime = System.currentTimeMillis() - start; //ms
-		log.info(new StringBuilder("batchInsert by single thread end : ").append("batchToSave.size() = ").append(insertSize)
+		System.out.println(new StringBuilder("batchInsert by single thread end : ").append("batchToSave.size() = ").append(insertSize)
 				.append(" ,costTime : ").append(costTime).append("ms").toString());
 		return result;
 	}
 	
-	public Map<String,Boolean> batchInsertByMultiThread(List<T> batchToSave, int batchSize){
-		
-		if (batchSize < 0 || batchSize > MAX_BATCH_INSERT_SIZE) {
-			throw new IllegalArgumentException("illegal argument [batchSize] = " + batchSize);
-		}
+	private Map<String,Boolean>  _batchInsert(List<T> batchToSave) {
 		if (CollectionUtils.isEmpty(batchToSave)){
 			return Collections.EMPTY_MAP;
 		}
-		int insertSize = batchToSave.size();
-		if (insertSize <= batchSize) {
-			return _batchInsert(batchToSave);
-		}
-		
-		long start = System.currentTimeMillis(); // start
-		log.info(new StringBuilder("start to batchInsertByMultiThread : batchToSave.size() = ").append(insertSize).append(", batchSize = ").append(batchSize).toString());
-		
-		AtomicInteger totalTaskCounts = new AtomicInteger((int) Math.ceil(((double) insertSize) / batchSize));
-		final Map<String,Boolean> result = new ConcurrentHashMap<String, Boolean>(insertSize);
-		ThreadPoolSingleton threadPoolSingleton = ThreadPoolSingleton.getInstance();
-		
-		List<T> perInsert = new ArrayList<T>(batchSize);
-		for (int index=0; index < insertSize; index++) {
-			perInsert.add(batchToSave.get(index));
-			if (index != 0 && (index % batchSize == 0)) {
-				threadPoolSingleton.execute(new BatchInsertTask<T,PK>(this, perInsert, totalTaskCounts, result));
-				perInsert = new ArrayList(batchSize);
-			}
-		}
-		if (perInsert.size() > 0) {
-			threadPoolSingleton.execute(new BatchInsertTask<T,PK>(this, perInsert, totalTaskCounts, result));
-		}
-		while (true) {
-			if (totalTaskCounts.get() == 0) {
-				break;
-			}
-			try {
-				Thread.yield();
-				Thread.sleep(500);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-		long costTime = System.currentTimeMillis() - start; //ms
-		log.info(new StringBuilder("batchInsertByMultiThread end : ").append("batchToSave.size() = ").append(insertSize)
-				.append(", totalTaskCounts = ").append(totalTaskCounts).append(", costTime : ").append(costTime).append("ms").toString());
-		return result;
+		return(Map<String,Boolean>)requestForResult(BATCH_INSERT,batchToSave);
 	}
 	
+	/**批量插入结果Map的key为实体的id(这里的String有点坑)，value为更新的结果，true:成功*/
+	public Map<String,Boolean>  batchInsert(List<T> batchToSave) {
+		if (CollectionUtils.isEmpty(batchToSave)){
+			return Collections.EMPTY_MAP;
+		}
+		return batchInsert(batchToSave,MAX_BATCH_INSERT_SIZE);
+	}
+	
+	public boolean delete(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
+		return checkSuccess(getMapResponse(DELETE,parseToRequestJson(query, sort, pagination)));
+	}
 	
 	public boolean delete(Map<String,Object> query) {
-		return checkSuccess(getMapResponse(DELETE,query));
+		return delete(query,null,null);
 	}
 
 	public boolean deleteById(PK id) {
@@ -571,23 +425,31 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		if (CollectionUtils.isEmpty(idsColl)) {
 			return false;
 		}
-		Map<String,Object> query = new HashMap<String,Object>(); 
+		Map<String,Object> query = new HashMap(); 
 		ServiceQueryHelper.and(query, "id",idsColl,ServiceQueryHelper.IN);
 		return delete(query);
 	}
 
 	public long counts(Map<String, Object> query) {
-		return Long.valueOf(requestForResult(COUNTS,query).toString());
+		Object counts = requestForResult(COUNTS,query);
+		if (null == counts) {
+			return 0;
+		}
+		return Long.valueOf(counts.toString());
 	}
 	
-	/**
-	 * 查询集合数量
-	 * @return
-	 */
 	public long counts() {
 		return counts(null);
 	}
-
+	
+	public boolean checkExists(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
+		return Boolean.valueOf(requestForResult(CHECK_EXISTS,parseToRequestJson(query, sort, pagination)).toString());
+	}
+	
+	public boolean checkExists(Map<String, Object> query) {
+		return checkExists(query,null,null);
+	}
+	
 	/**
 	 * 根据主键的生产方式和偏移量，生产主键
 	 * @param offset 生成主键的数量
@@ -596,11 +458,15 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		if (offset < 1) {
 			throw new IllegalArgumentException("offset can not be less than zero !!!");
 		}
-		Long endId = Long.valueOf(requestForResult(GENERATE_PRIMARY_KEY_BY_OFFSET,Integer.valueOf(offset)).toString());
+		Object pkObj = requestForResult(GENERATE_PRIMARY_KEY_BY_OFFSET,Integer.valueOf(offset));
+		if (null == pkObj) {
+			return Collections.emptyList();
+		}
+		// 坑！！！ ，Dao返回的Long类型竟然给我搞成了Integer
+		Long endId = Long.valueOf(pkObj.toString());
 		List<PK> pks = new ArrayList<PK>(offset);
 		for (long counts = offset-1; counts >= 0; counts --) {
 			try {
-				System.out.println(pkClass);
 				pks.add(pkClass.getConstructor(String.class).newInstance(Long.valueOf(endId - counts).toString()));
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -610,31 +476,43 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return pks;
 	}
 	
-	/**
-	 * 获取每个用户中Session中的查询条件
-	 * @param query
-	 * @param excludeCount
-	 */
-	public String  getCollectionRequestJson(Map<String, Object> query, Boolean excludeCount) {
-		if (null == query) {
-			return "{}";
-		}
-		return Json.toJson(query);
+	/** 获取每个用户中Session中的查询条件*/
+//	protected String  getCollectionRequestJson(Map<String, Object> query, Boolean excludeCount) {
+//		
+//		SorterSession sorterSession = new SorterSession(null);
+//		FilterSession filterSession = new FilterSession();
+//		Filter filter = filterSession.getFilter();
+//		PagerSession pagerSession = new PagerSession();
+//		if (null == query) {
+//			query = new LinkedHashMap();
+//		}
+//		Map<String,Object> sort = null;
+//		if (null != sorterSession.getSorter()) {
+//			String sorterKey = sorterSession.getSorter().getKey();
+//			Integer braceIndex = Integer.valueOf(sorterKey.indexOf("["));
+//			if (braceIndex.intValue() > 0) {
+//				sorterKey = sorterKey.substring(0, braceIndex.intValue());
+//			}
+//			sort = ServiceSorterHelper.build(sorterKey, sorterSession.getSorter().getDirection());
+//		}
+//		return parseToRequestJson(
+//				ServiceQueryHelper.and(query, filter.getQuery()),
+//				sort,
+//				ServicePaginationHelper.build(Integer.valueOf(pagerSession.getPager().getPageLimit()),
+//						Integer.valueOf(pagerSession.getPager().getCurrentPage())), excludeCount);
+//	}
+	/** 获取每个用户中Session中的查询条件*/
+	protected String  getCollectionRequestJson(Map<String, Object> query, Boolean excludeCount) {
+		return parseToRequestJson(query, null, null);
 	}
 
-	public String parseToRequestJson(Object query, Object sort, Object pagination) {
+	protected String parseToRequestJson(Map<String,Object> query, Map<String,Object> sort, Map<String,Object> pagination) {
 		return parseToRequestJson(query, sort, pagination, Boolean.valueOf(true));
 	}
 
-	/**
-	 * 将map中的查询条件转换为json字符串，作为请求的参数
-	 * @param query
-	 * @param sort
-	 * @param pagination
-	 * @param excludeCount
-	 */
-	public String parseToRequestJson(Object query, Object sort, Object pagination, Boolean excludeCount) {
-		Map<String, Object> request = new HashMap<String, Object>();
+	/** 将map中的查询条件转换为json字符串，作为请求的参数*/
+	protected String parseToRequestJson(Map<String,Object> query, Map<String,Object> sort, Map<String,Object> pagination, Boolean excludeCount) {
+		HashMap<String, Object> request = new HashMap();
 		if (null != query) {
 			request.put("query", query);
 		}
@@ -650,8 +528,8 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return Json.toJson(request);
 	}
 
-	public String parseRequestQueryGroupToRequestJson(Object query, Object group) {
-		Map<String, Object> request = new HashMap<String, Object> ();
+	protected String parseRequestQueryGroupToRequestJson(Map<String,Object> query, Map<String,Object> group) {
+		Map<String, Object> request = new HashMap();
 		if (null != query) {
 			request.put("query", query);
 		}
@@ -659,7 +537,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return Json.toJson(request);
 	}
 
-	public boolean checkSuccess(Map<String,Object> serviceResponseMap) {
+	protected boolean checkSuccess(Map<String,Object> serviceResponseMap) {
 		if (null == serviceResponseMap) {
 			return false;
 		}
@@ -674,6 +552,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		}
 		return true;
 	}
+
 	/**
 	 * 若无法满足实体映射可以被覆盖，提供自己的实现
 	 * 
@@ -693,14 +572,9 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return MyBeanUtil.mapToEntity(clazz, propertiesCol, ormPackageNames);
 	}
 	
-	/**
-	 * 提供默认实现，也可以被覆盖，提高orm的所有包名
-	 * 
-	 * @return
-	 */
+	/** 提供默认实现，也可以被覆盖，提高orm的所有包名*/
 	protected String[] prepareOrmPackageNames() {
-		String[] names = { "" };
+		String[] names = {"com.tomtop.application.orm"};
 		return names;
 	}
-	
 }

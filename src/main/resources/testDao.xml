@@ -12,7 +12,7 @@
 
 	<context:component-scan base-package="dao"/>
 	
-	<context:property-placeholder location="classpath:/etc/conf/mongo.properties"/>  
+<!-- 	<context:property-placeholder location="classpath:/etc/conf/mongo.properties"/>   -->
 
     <bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
         <constructor-arg name="mongo" ref="mongo"/>
@@ -25,7 +25,7 @@
 <!--         <constructor-arg name="password" value="${mongo.password}" /> -->
 <!--     </bean> -->
 
-    <mongo:mongo host="${mongo.host}" port="${mongo.port}">
+    <mongo:mongo  host="192.168.216.204" port="27017">
         <mongo:options connections-per-host="60"
             threads-allowed-to-block-for-connection-multiplier="150"
             connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />

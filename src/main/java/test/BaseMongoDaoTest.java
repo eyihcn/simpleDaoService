@@ -2,6 +2,9 @@ package test;
 
 import static org.junit.Assert.fail;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -168,22 +171,26 @@ public class BaseMongoDaoTest {
 	
 	@Test
 	public void testSaveByUpsertT2() {
-		Product  p = new Product();
-		p.setId(81807L);
-		p.setName("tes-testSaveByUpsertT2 id :81807L ");
-		p.setUnitPrice(12);
-		System.out.println(productDao.saveByUpsert(p));
+		Product product = productDao.findById(1L);
+		product.setName("dasfd");
+		System.out.println(productDao.saveByUpsert(product));
 	}
 
 
 	@Test
 	public void testUpdateMapOfStringObject() {
-		fail("Not yet implemented");
+		Map<String, Object> update = new HashMap<String, Object>();
+		update.put("id", 1);
+		update.put("name", null);
+		System.out.println(productDao.update(update));
 	}
 
 	@Test
 	public void testUpdateT() {
-		fail("Not yet implemented");
+		Product product = productDao.findById(1L);
+		System.out.println(product.getName());
+		product.setName(null);
+		System.out.println(productDao.update(product));
 	}
 
 	@Test
