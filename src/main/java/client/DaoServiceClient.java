@@ -1,5 +1,7 @@
 package client;
 
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -7,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -19,6 +22,7 @@ import utils.MyBeanUtil;
 import utils.ServicePaginationHelper;
 import utils.ServiceQueryHelper;
 import entity.BaseEntity;
+import entity.ServerPortSetting;
 
 /**
  * @author tomtop2016
@@ -48,6 +52,7 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	public static final String BATCH_UPDATE = "batchUpdate";
 	public static final String BATCH_SAVE_BY_UPSERT= "batchSaveByUpsert";
 	public static final String BATCH_INSERT = "batchInsert";
+	public static final String FIND_IDS = "findIds";
 	public static final String GENERATE_PRIMARY_KEY_BY_OFFSET = "generatePrimaryKeyByOffset";
 	
 	public static final String COLLECTION = "collection";
@@ -70,15 +75,65 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 	 * 			初始化host、token、className、modelName
 	 */
 	public DaoServiceClient() {
-		String[] hostAndToken = initServiceAddressAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
-		this.host  = hostAndToken[0];
-		this.token = hostAndToken[1];
+//		String[] hostAndToken = initServiceAddressAndToken(this.getClass().getAnnotation(ServiceCode.class).value());
+//		this.host  = hostAndToken[0];
+//		this.token = hostAndToken[1];
+		initRquestHostAndToken_2(this.getClass().getAnnotation(ServiceCode.class).value());
 		this.modelName =  this.getClass().getAnnotation(ModelName.class).value();
 		this.pkClass = 	MyBeanUtil.getSuperClassGenericType(this.getClass(), 1);
 		this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());
 		this.entityClassName = this.entityClass.getSimpleName();
 		this.ormPackageNames = prepareOrmPackageNames();
 	}
+	
+	/**
+	 * 初始化请求的Host和Token
+	 */
+	protected void initRquestHostAndToken_2(String serviceTokenCode) {
+		String serviceAddressKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_ADDRESS";
+		String serviceTokenKey = "JTOMTOPERP_" + serviceTokenCode + "_SERVICE_TOKEN";
+		// 1. 先从缓存取host 和 token
+		Map<String, String> serviceConfig = serviceRouterConfigs.get(serviceTokenCode);
+		if (null != serviceConfig) {
+			host = ((String) serviceConfig.get("ADDRESS"));
+			token = ((String) serviceConfig.get("TOKEN"));
+			return;
+		}
+		// 2. 若缓存中没有，从系统变量中获取
+		host = readValue("dao_service_router.properties", serviceAddressKey);
+		if(host != null) {
+			token = readValue("dao_service_router.properties", serviceTokenKey);
+			return ;
+		}
+		// 3. 若系统变量中没有，查询数据库配置
+		ServerPortSetting sp =	new ServerSettingService().fetchServerPortSettingByCode(serviceTokenCode);
+		if (null == sp) {
+			throw new RuntimeException("no server config! serviceTokenCode=[" +serviceTokenCode+"]");
+		}
+		host = sp.getAddress();
+		token = sp.getToken();
+		// 缓存
+		serviceConfig = new HashMap<String, String>();
+		serviceConfig.put("ADDRESS", host);
+		serviceConfig.put("TOKEN", token);
+		serviceRouterConfigs.put(serviceTokenCode, serviceConfig);
+	}
+	
+	 //根据key读取value
+	 private  String readValue(String filePath,String key) {
+	  Properties props = new Properties();
+	        try {
+	         InputStream in = new BufferedInputStream (this.getClass().getClassLoader().getResourceAsStream(filePath));
+	         props.load(in);
+	         String value = props.getProperty (key);
+	         log.info(new StringBuilder("read properties : ").append(key).append(" = ").append(value).toString());
+            return value;
+	        } catch (Exception e) {
+	         e.printStackTrace();
+	         return null;
+	        }
+	 }
+	
 	
 	protected Object  requestForResult(String requestMethodName,Object requestParam) {
 		try {
@@ -450,6 +505,14 @@ public abstract class DaoServiceClient<T extends BaseEntity<PK>, PK extends Seri
 		return checkExists(query,null,null);
 	}
 	
+	public List<PK> findIds(Map<String, Object> query, Map<String, Object> sort, Map<String, Object> pagination) {
+		return (List<PK>) requestForResult(FIND_IDS,parseToRequestJson(query, sort, pagination));
+	}
+	
+	public List<PK> findIds(Map<String, Object> query) {
+		return findIds(query, null ,null);
+	}
+
 	/**
 	 * 根据主键的生产方式和偏移量，生产主键
 	 * @param offset 生成主键的数量

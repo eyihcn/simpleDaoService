@@ -2,6 +2,7 @@ package test;
 
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +14,10 @@ import org.junit.Test;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
+import utils.ServicePaginationHelper;
+import yichen.massbatchexport.DataProvider;
+import yichen.massbatchexport.MultiThreadExportService;
+import yichen.massbatchexport.RowDataHandler;
 import client.ProductServiceClient;
 import entity.Product;
 
@@ -204,7 +209,7 @@ public class DaoServiceClientTest {
 			product.setUnitPrice(i);
 			batchToSave.add(product);
 		}
-		System.out.println(productServiceClient.batchInsertByMultiThread(batchToSave, batchSize));
+//		System.out.println(productServiceClient.batchInsertByMultiThread(batchToSave, batchSize));
 		
 	}
 
@@ -240,7 +245,7 @@ public class DaoServiceClientTest {
 			product.setUnitPrice(i);
 			batchToSave.add(product);	
 		}
-		System.out.println(productServiceClient.batchSaveOrUpdate(batchToSave));
+//		System.out.println(productServiceClient.batchSaveOrUpdate(batchToSave));
 	}
 	
 	@Test
@@ -251,7 +256,7 @@ public class DaoServiceClientTest {
 		product.setId(81806L);
 		product.setName("pro-1-b-");
 //		product.setUnitPrice(99);
-		System.out.println(productServiceClient.saveOrUpdate(product));
+//		System.out.println(productServiceClient.saveOrUpdate(product));
 	}
 	
 	@Test
@@ -341,4 +346,40 @@ public class DaoServiceClientTest {
 			e.printStackTrace();
 		}
 	}
+	
+	@Test
+	public void testFindIds() {
+		Map<String, Object> query = new HashMap<String, Object>();
+		query.put("unitPrice", -1);
+		System.out.println(productServiceClient.findIds(query ));
+	}
+	
+	@Test
+	public void testThreadSafe_1 () {
+		
+		int totalPageSize = Long.valueOf(productServiceClient.counts()).intValue();
+		String [] titles = new String[2];
+		titles[0] = "name";
+		titles[1] = "unitPrice";
+		String exportFileName = "D:"+File.separator+"testProduct.xls";
+		 new MultiThreadExportService<Product, Object>(totalPageSize,titles,
+				 
+			 new DataProvider<Product>() {
+
+			public List<Product> providerOnePageDage(int pageSize, int pageNumber) {
+				return productServiceClient.findList(null, null, ServicePaginationHelper.build(pageSize, pageNumber));
+			}
+		 }
+		 ,new RowDataHandler<Product>() {
+
+			public List<String> handler(Product entity) {
+				List<String> rows = new ArrayList<String>(2);
+				rows.add(Thread.currentThread().getName()+"---"+entity.getName());
+				rows.add(entity.getUnitPrice()+"");
+				return rows;
+			}
+		}).export(exportFileName);
+		
+	}
+	
 }

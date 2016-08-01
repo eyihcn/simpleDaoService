@@ -31,6 +31,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	protected static final String BATCH_SAVE_BY_UPSERT= "batchSaveByUpsert";
 	protected static final String BATCH_INSERT = "batchInsert";
 	protected static final String CHECK_EXISTS = "checkExists";
+	protected static final String FIND_IDS = "findIds";
 	protected static final String GENERATE_PRIMARY_KEY_BY_OFFSET = "generatePrimaryKeyByOffset";
 	
 	protected static final String COLLECTION = "collection";
@@ -272,6 +273,19 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			serviceResponse.setResult(commonDaoInter.checkExists(request));
+		} catch (Exception e) {
+			e.printStackTrace();
+			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
+		}
+		return serviceResponse;
+	}
+	
+	@RequestMapping(value=FIND_IDS, method=RequestMethod.POST)
+	@ResponseBody
+	public ServiceResponse findIds(@RequestBody Map<String, Object> request) {
+		ServiceResponse serviceResponse = new ServiceResponse();
+		try {
+			serviceResponse.setResult(commonDaoInter.findIds(request));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);

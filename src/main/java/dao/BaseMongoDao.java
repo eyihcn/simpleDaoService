@@ -310,6 +310,22 @@ public class BaseMongoDao<T extends BaseEntity<PK>, PK extends Serializable> imp
 		}
 		return result;
 	}
+	
+	/**根据查询条件获取实体id*/
+	public List<PK> findIds(Map<String, Object> request){
+		if (MapUtils.isEmpty(request)) {
+			return Collections.emptyList();
+		}
+		List<T> entities =  findCollection(request);
+		if (CollectionUtils.isEmpty(entities)) {
+			return Collections.emptyList();
+		}
+		List<PK> ids = new  ArrayList(entities.size());
+		for (T en : entities) {
+			ids.add(en.getId());
+		}
+		return ids;
+	}
 
 	public PK generatePrimaryKeyByOffset(int offset) {
 		if (offset < 1) {

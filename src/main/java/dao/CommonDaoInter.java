@@ -105,6 +105,14 @@ public interface CommonDaoInter<T extends BaseEntity<PK>, PK extends Serializabl
 	Long findCollectionCount(Map<String, Object> request);
 	
 	long count(Map<String, Object> query);
+	
+	/**
+	 * 根据查询条件，返回查询到的所有实体的id集合
+	 * @param request 查询条件
+	 * @return 所有实体的id集合
+	 */
+	List<PK> findIds(Map<String, Object> request);
+	
 	/**
 	 *  根据主键的生产方式和偏移量，产生一个的主键
 	 * @param offset 偏移量
