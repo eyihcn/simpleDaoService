@@ -60,7 +60,7 @@ public interface CommonDaoInter<T extends BaseEntity<PK>, PK extends Serializabl
 	 * @param updates 需要更新的属性(key为字段名，value为对应的值)
 	 * @return true:成功，false:失败
 	 */
-	boolean batchUpdateByIds(List<Integer> ids, Map<String, Object> updates);
+	boolean batchUpdateByIds(List<PK> ids, Map<String, Object> updates);
 	
 	/**
 	 * 批量更新,每个单独的更新操作和 单独的update(Map<String, Object> properties)方法相同

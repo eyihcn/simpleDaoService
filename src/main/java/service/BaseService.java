@@ -121,7 +121,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse batchUpdateByIds(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			List<Integer> ids = (List<Integer>) request.remove(IDS);
+			List<PK> ids = (List<PK>) request.remove(IDS);
 			if (!commonDaoInter.batchUpdateByIds(ids,request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {

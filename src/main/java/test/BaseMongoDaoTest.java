@@ -2,7 +2,9 @@ package test;
 
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.After;
@@ -128,7 +130,7 @@ public class BaseMongoDaoTest {
 
 	@Test
 	public void testDeleteT() {
-		fail("Not yet implemented");
+		
 	}
 
 	@Test
@@ -143,12 +145,17 @@ public class BaseMongoDaoTest {
 
 	@Test
 	public void testDeleteById() {
-		fail("Not yet implemented");
+		System.out.println(productDao.deleteById(2L));
 	}
 
 	@Test
 	public void testUpdateMulti() {
-		fail("Not yet implemented");
+		
+		List<Long> ids = Arrays.asList(3L);
+		Map<String, Object> updates = new HashMap<String, Object>();
+		updates.put("unitPrice", 8889D);
+		boolean success = productDao.batchUpdateByIds(ids, updates);
+		System.out.println(success);
 	}
 
 	@Test
@@ -195,12 +202,20 @@ public class BaseMongoDaoTest {
 
 	@Test
 	public void testSaveMapOfStringObject() {
-		fail("Not yet implemented");
+		Map<String,Object> updates = new HashMap<String, Object>();
+		updates.put("id", 1L);
+		updates.put("name", "EYIHCN-6");
+		boolean success = productDao.update(updates);
+		System.out.println(success);
 	}
 
 	@Test
 	public void testSaveT() {
-		fail("Not yet implemented");
+		Product p  = new Product();
+		p.setName("eyihc");
+		p.setUnitPrice(11111111111D);
+		boolean save = productDao.save(p);
+		System.out.println(save);
 	}
 
 	@Test
