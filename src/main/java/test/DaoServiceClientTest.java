@@ -185,7 +185,6 @@ public class DaoServiceClientTest {
 			product.setUnitPrice(i);
 			batchToSave.add(product);
 		}
-		System.out.println(productServiceClient.batchInsert(batchToSave, batchSize).size());
 		System.out.println(productServiceClient.batchInsert(batchToSave, batchSize));
 		
 	}

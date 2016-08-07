@@ -23,13 +23,12 @@ import entity.ServerPortSetting;
  * @author eyihcn
  *
  */
-@SuppressWarnings({ "unchecked", "rawtypes" })
 public abstract class BaseServiceClient {
 
 	
 	final Logger log = LoggerFactory.getLogger(DaoServiceClient.class);
 
-	protected static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap();
+	protected static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap<String, Map<String, String>>();
 	@Autowired
 	protected RestTemplate restTemplate ; //once constructed ,is thread safe
 //	protected String host; // 主机
@@ -40,7 +39,7 @@ public abstract class BaseServiceClient {
 	
 	public static MultiValueMap<String, Object> headers ;
 	static {
-		headers = new LinkedMultiValueMap();
+		headers = new LinkedMultiValueMap<String, Object>();
 		headers.add("Accept", "application/json;charset=utf-8");
 		headers.add("Content-Type", "application/json;charset=utf-8");
 	}
@@ -91,6 +90,7 @@ public abstract class BaseServiceClient {
 	 * @param headers 请求头
 	 * @return
 	 */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public <E> E request(Class<E> responseType,String requsetURL,Object requestParam,MultiValueMap<String, Object> headers ) {
 		
 		E response = null;
@@ -107,7 +107,7 @@ public abstract class BaseServiceClient {
 		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(tempURL).toString());
 		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requestParam).toString());
 		try {
-			HttpEntity httpEntity = new HttpEntity(requestParam, headers);
+			HttpEntity<Object> httpEntity = new HttpEntity(requestParam, headers);
 			response = restTemplate.postForObject(requsetURL, httpEntity,responseType , new Object[0]);
 			_activateTimeOut();
 		} catch (Exception e) {
@@ -135,6 +135,7 @@ public abstract class BaseServiceClient {
 	 * @param requestParam
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	public Map<String,Object> getMapResponse(String ServiceAdress,String ServiceEntry,String serviceToken, Object requestParam) {
 		return  request(Map.class, buildRequestURL(ServiceAdress,ServiceEntry,serviceToken), requestParam, headers);
 	}

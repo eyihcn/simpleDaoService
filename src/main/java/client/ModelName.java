@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
 /**
  * @author chenyi
  * @version May 5, 201611:13:05 PM
- * @description  指定：1.模块环境变量Token 2.模块名称 
+ * @description  指定：1.模块名称 
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
