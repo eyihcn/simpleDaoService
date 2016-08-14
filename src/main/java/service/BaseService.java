@@ -6,16 +6,24 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import dao.CommonDaoInter;
+import utils.MyBeanUtil;
+import dao.BaseMongoDao;
 import entity.BaseEntity;
 @SuppressWarnings("unchecked")
 public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializable> {
 
+	final Logger log = LoggerFactory.getLogger(BaseService.class);
+	
 	protected static final String SAVE = "save";
 	protected static final String UPDATE = "update";
 	protected static final String SAVE_BY_UPSERT = "saveByUpsert";
@@ -39,11 +47,36 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	protected static final String UPDATES = "updates";
 	protected static final String IDS = "ids";
 
-	protected CommonDaoInter<T, PK> commonDaoInter;
+	private Class<T> entityClass; // 实体的运行是类
+	private Class<PK> pkClass; // 实体的运行是类
+	private String defaultDaoBeanName ; // spring容器中的dao-bean的默认名称
+	
+	@Autowired
+	private ApplicationContext applicationContext ;
 
-	public void setCommonDaoInter(CommonDaoInter<T, PK> commonDaoInter) {
-		this.commonDaoInter = commonDaoInter;
+	public BaseService() {
+		this.entityClass = MyBeanUtil.getSuperClassGenericType(this.getClass());
+		this.pkClass = MyBeanUtil.getSuperClassGenericType(this.getClass(), 1);
+		// 默认的dao命名约束 entity-name的首字母小写+"Dao"
+		this.defaultDaoBeanName =  StringUtils.uncapitalize(entityClass.getSimpleName()+"Dao");
 	}
+	
+	public void setApplicationContext(ApplicationContext applicationContext) {
+		this.applicationContext = applicationContext;
+	}
+	
+//	public <E> 
+
+	@SuppressWarnings("rawtypes")
+	public BaseMongoDao<T,PK>  getDao(Class<T> entityClass , Class<PK> pkClass) {
+		log.info("========================dao bean name :::"+defaultDaoBeanName);
+		BaseMongoDao<T,PK> daoBean = (BaseMongoDao<T, PK>) applicationContext.getBean(defaultDaoBeanName);
+		if (null == daoBean) {
+			daoBean =  new BaseMongoDao(entityClass,pkClass);
+		}
+		return daoBean;
+	}
+	
 
 	@RequestMapping(value = FIND_COLLECTION, method = RequestMethod.POST)
 	@ResponseBody
@@ -51,12 +84,12 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			Map<String, Object> collectionInfo = new HashMap<String, Object>();
-			List<T> entities = commonDaoInter.findCollection(request);
+			List<T> entities = getDao(entityClass, pkClass).findCollection(request);
 			if (null == entities) {
 				entities = new ArrayList<T>();
 			}
 			collectionInfo.put(COLLECTION, entities);
-			collectionInfo.put(COLLECTION_COUNT, commonDaoInter.findCollectionCount(request));
+			collectionInfo.put(COLLECTION_COUNT, getDao(entityClass, pkClass).findCollectionCount(request));
 			serviceResponse.setResult(collectionInfo);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -70,7 +103,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse save(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			if (!commonDaoInter.save(request)) {
+			if (!getDao(entityClass, pkClass).save(request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -87,7 +120,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse update(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			if (!commonDaoInter.update(request)) {
+			if (!getDao(entityClass, pkClass).update(request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -104,7 +137,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse saveOrUpdate(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			if (!commonDaoInter.saveByUpsert(request)) {
+			if (!getDao(entityClass, pkClass).saveByUpsert(request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -122,7 +155,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
 			List<PK> ids = (List<PK>) request.remove(IDS);
-			if (!commonDaoInter.batchUpdateByIds(ids,request)) {
+			if (!getDao(entityClass, pkClass).batchUpdateByIds(ids,request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -139,7 +172,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse batchUpdate(@RequestBody List<Map<String, Object>> allUpdates) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult( commonDaoInter.batchUpdate(allUpdates));
+			serviceResponse.setResult( getDao(entityClass, pkClass).batchUpdate(allUpdates));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -152,7 +185,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse batchSaveOrUpdate(@RequestBody List<Map<String, Object>> allSaveOrUpdates) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult( commonDaoInter.batchSaveByUpsert(allSaveOrUpdates));
+			serviceResponse.setResult( getDao(entityClass, pkClass).batchSaveByUpsert(allSaveOrUpdates));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -165,7 +198,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse batchInsert(@RequestBody List<Map<String, Object>> batchToSave) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(commonDaoInter.batchInsert(batchToSave));
+			serviceResponse.setResult(getDao(entityClass, pkClass).batchInsert(batchToSave));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -178,7 +211,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse findOne(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			T entity = commonDaoInter.findOne(request);
+			T entity = getDao(entityClass, pkClass).findOne(request);
 			serviceResponse.setResult(entity);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -195,7 +228,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse findById(@RequestBody Long id) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			T entity = commonDaoInter.findById((PK) id);
+			T entity = getDao(entityClass, pkClass).findById((PK) id);
 			serviceResponse.setResult(entity);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -210,7 +243,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse findList(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(commonDaoInter.findCollection(request));
+			serviceResponse.setResult(getDao(entityClass, pkClass).findCollection(request));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -225,7 +258,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse deleteById(@RequestBody Long id) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			if (!commonDaoInter.deleteById((PK) id)) {
+			if (!getDao(entityClass, pkClass).deleteById((PK) id)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -242,7 +275,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse delete(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			if (!commonDaoInter.delete(request)) {
+			if (!getDao(entityClass, pkClass).delete(request)) {
 				serviceResponse.changeStatus(ResponseStatus.ERROR, false);
 			} else {
 				serviceResponse.setResult(true);
@@ -259,7 +292,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse counts(@RequestBody Map<String, Object> query) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(commonDaoInter.count(query));
+			serviceResponse.setResult(getDao(entityClass, pkClass).count(query));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -272,7 +305,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse checkExists(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(commonDaoInter.checkExists(request));
+			serviceResponse.setResult(getDao(entityClass, pkClass).checkExists(request));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -285,7 +318,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse findIds(@RequestBody Map<String, Object> request) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(commonDaoInter.findIds(request));
+			serviceResponse.setResult(getDao(entityClass, pkClass).findIds(request));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
@@ -298,7 +331,7 @@ public abstract class BaseService<T extends BaseEntity<PK>, PK extends Serializa
 	public ServiceResponse generatePrimaryKeyByOffset(@RequestBody Integer offset) {
 		ServiceResponse serviceResponse = new ServiceResponse();
 		try {
-			serviceResponse.setResult(commonDaoInter.generatePrimaryKeyByOffset(offset));
+			serviceResponse.setResult(getDao(entityClass, pkClass).generatePrimaryKeyByOffset(offset));
 		} catch (Exception e) {
 			e.printStackTrace();
 			serviceResponse.changeStatus(ResponseStatus.SERVER_ERROR, null);
