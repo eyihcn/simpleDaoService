@@ -32,7 +32,7 @@
 <!-- 			threads-allowed-to-block-for-connection-multiplier="150" -->
 <!-- 			connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" /> -->
 <!-- 	</mongo:mongo> -->
-	<mongo:mongo host="192.168.216.204" port="27017">
+	<mongo:mongo host="192.168.216.91" port="27017">
         <mongo:options connections-per-host="60"
             threads-allowed-to-block-for-connection-multiplier="150"
             connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
@@ -63,8 +63,7 @@
 	<!-- 在实际开发中通常都需配置 mvc:annotation-driven 标签 -->
 	<mvc:annotation-driven></mvc:annotation-driven>
 	<mvc:default-servlet-handler />
-	<bean
-		class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
+	<bean class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
 		<property name="messageConverters">
 			<list>
 				<ref bean="jsonConverter" />

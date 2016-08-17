@@ -2,6 +2,9 @@ package test;
 
 import static org.junit.Assert.fail;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +62,17 @@ public class BaseServiceTest {
 
 	@Test
 	public void testUpdate() {
-		fail("Not yet implemented");
+		
+		long start = System.currentTimeMillis();
+		String requestUrl = url+"sale/Product/update";
+		Map<String,Object> update = new HashMap<String,Object>();
+		update.put("id", 3L);
+		update.put("name","eyihcn-1");
+		String jsonParam = Json.toJson(update);
+		HttpEntity httpEntity = new HttpEntity(jsonParam, headers);
+		String json  = restTemplate.postForObject(requestUrl , httpEntity, String.class, new Object[0]);
+		System.out.println(json);
+		System.out.println(System.currentTimeMillis()-start);
 	}
 
 	@Test
