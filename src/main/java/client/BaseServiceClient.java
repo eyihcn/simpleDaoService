@@ -4,10 +4,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -30,6 +31,7 @@ public abstract class BaseServiceClient {
 
 	protected static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap<String, Map<String, String>>();
 	@Autowired
+	@Qualifier("restTemplate")
 	protected RestTemplate restTemplate ; //once constructed ,is thread safe
 //	protected String host; // 主机
 //	protected String token; // 令牌
@@ -164,6 +166,7 @@ public abstract class BaseServiceClient {
 	}
 
 	public void setRestTemplate(RestTemplate restTemplate) {
+		System.out.println(restTemplate.getRequestFactory().getClass());
 		log.info("Autowired... " + restTemplate);
 		this.restTemplate = restTemplate;
 	}	

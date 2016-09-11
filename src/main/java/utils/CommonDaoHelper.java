@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
  
  public class CommonDaoHelper {
 	public static final String DESC = "-1";
@@ -65,7 +63,7 @@ import org.apache.commons.lang.StringUtils;
 	public static Integer getRequestPageSize(Map<String, Object> requestArgs) {
 		Integer pageSize = MAX_PAGE_SIZE;
 		HashMap<String, Object> pagination = (HashMap) requestArgs.get("pagination");
-		if ((null != pagination) && (null != pagination.get("pageSize")) && (StringUtils.isNumeric(pagination.get("pageSize").toString()))) {
+		if ((null != pagination) && (null != pagination.get("pageSize")) && (org.apache.commons.lang3.StringUtils.isNumeric(pagination.get("pageSize").toString()))) {
 			pageSize = new Integer(pagination.get("pageSize").toString());
 		}
 		if (pageSize.intValue() > MAX_PAGE_SIZE.intValue()) {
@@ -78,7 +76,7 @@ import org.apache.commons.lang.StringUtils;
 	public static Integer getRequestPageNumber(Map<String, Object> requestArgs) {
 		Integer pageNumber = PAGE_NUMBER;
 		HashMap<String, Object> pagination = (HashMap) requestArgs.get("pagination");
-		if ((null != pagination) && (null != pagination.get("pageNumber")) && (StringUtils.isNumeric(pagination.get("pageNumber").toString()))) {
+		if ((null != pagination) && (null != pagination.get("pageNumber")) && (org.apache.commons.lang3.StringUtils.isNumeric(pagination.get("pageNumber").toString()))) {
 			pageNumber = new Integer(pagination.get("pageNumber").toString());
 		}
 
