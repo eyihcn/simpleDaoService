@@ -9,13 +9,10 @@
     http://www.springframework.org/schema/data/mongo/spring-mongo-1.0.xsd
     http://www.springframework.org/schema/beans
     http://www.springframework.org/schema/beans/spring-beans-3.0.xsd"
-    default-autowire="byName" default-lazy-init="true"
-    >
-
-    <!-- 配置自定扫描的包
- -->
-	<context:component-scan base-package="client"></context:component-scan>
-	<bean id="restTemplate" class="org.springframework.web.client.RestTemplate"></bean>
+    default-autowire="byName" default-lazy-init="true">
+    
+    
+<!-- 	<context:component-scan base-package="client"/> -->
 	
 	<bean id="productServiceClient" class="client.ProductServiceClient"></bean>
 	
@@ -63,6 +60,8 @@
         <!--读写超时时间，毫秒-->
         <property name="readTimeout" value="10000"/>
     </bean>
+    
+    <bean id="restTemplate" class="org.springframework.web.client.RestTemplate"></bean>
 
     <bean id="restTemplateConnPool" class="org.springframework.web.client.RestTemplate">
         <constructor-arg ref="clientHttpRequestFactory"/>
@@ -84,16 +83,5 @@
 <!--             </list> -->
 <!--         </property> -->
     </bean>
-	
-	<mongo:mongo host="169.254.230.152" port="27017">
-        <mongo:options connections-per-host="60"
-            threads-allowed-to-block-for-connection-multiplier="150"
-            connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" />
-    </mongo:mongo>
-<!-- 	<mongo:mongo host="192.168.216.204" port="27017"> -->
-<!--         <mongo:options connections-per-host="60" -->
-<!--             threads-allowed-to-block-for-connection-multiplier="150" -->
-<!--             connect-timeout="1000" max-wait-time="1500" auto-connect-retry="true" /> -->
-<!--     </mongo:mongo> -->
     
 </beans>

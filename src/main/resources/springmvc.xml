@@ -11,13 +11,14 @@
 	http://www.springframework.org/schema/data/mongo/spring-mongo-1.8.xsd
     http://www.springframework.org/schema/beans
     http://www.springframework.org/schema/beans/spring-beans-4.0.xsd">
-	<!-- <context:property-placeholder location="classpath:/com/myapp/mongodb/config/mongo.properties"/> -->
+    
+	<context:property-placeholder location="classpath:mongo.properties"/>
 	<!-- 配置自定扫描的包 -->
-	<context:component-scan base-package="action,dao,client"></context:component-scan>
+	<context:component-scan base-package="action,dao,client"/>
 
 	<bean id="restTemplate" class="org.springframework.web.client.RestTemplate" />
 	
-	<mongo:mongo-client host="169.254.230.152" port="27017" id="mongoClient">    
+	<mongo:mongo-client host="${mongo.host}" port="${mongo.port}" id="mongoClient">    
        <mongo:client-options connections-per-host="60"
 		threads-allowed-to-block-for-connection-multiplier="150"
 		connect-timeout="1000" max-wait-time="1500"  />    

@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -26,9 +25,6 @@ import java.util.TreeSet;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.MapUtils;
 import org.junit.Test;
-
-import test.ComplicatedBean;
-import test.User;
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public final class MyBeanUtil {
 	
@@ -272,7 +268,7 @@ public final class MyBeanUtil {
 						Class	acRowTpyeClass = (Class) acRowTpye;
 						// 若List的元素为自定义的orm，应该做递归处理
 						if (isSelfDesignOrm(acRowTpyeClass,ormPackageNames)) {
-							Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) colProperties;
+							Collection<Map<String, Object>> listMap = colProperties;
 							for (Map entityMap : listMap) {
 								col.add(mapToEntity(acRowTpyeClass, entityMap, ormPackageNames));
 							}
@@ -303,7 +299,7 @@ public final class MyBeanUtil {
 						col.addAll(colProperties);
 					}else {
 						// 若List的元素为自定义的orm，应该做递归处理
-						Collection<Map<String, Object>> listMap = (Collection<Map<String, Object>>) colProperties;
+						Collection<Map<String, Object>> listMap = colProperties;
 						for (Map entityMap : listMap) {
 							col.add(mapToEntity(acTpyeClass, entityMap, ormPackageNames));
 						}
@@ -493,49 +489,49 @@ public final class MyBeanUtil {
 		return false;
 	}
 	
-	@Test
-	public void testMapToBean() {
-		
-		Set<User> users = new HashSet<User>();
-		users.add(new User("eyihcn",new Date()));
-		users.add(new User("chenyi",new Date()));
-		users.add(new User("cnheyi",new Date()));
-		Map<String,User> nameToUser =new HashMap<String, User>();
-		nameToUser.put("me", new User("eyihcn",new Date()));
-		nameToUser.put("i", new User("cnheyi",new Date()));
-		nameToUser.put("my", new User("iyehcn",new Date()));
-		
-		Map<String,Set<User>> goupToUsers = new HashMap<String, Set<User>>();
-		goupToUsers.put("G1", users);
-		goupToUsers.put("G2", users);
-		Map<String, List<Map<String, User>>> goupToUsers2 = new HashMap<String, List<Map<String,User>>>();
-		List<Map<String, User>> ll = new ArrayList<Map<String,User>>();
-		ll.add(nameToUser);
-		
-		goupToUsers2.put("goupToUsers2", ll);
-		
-		
-		List<String> strList = new ArrayList<String>();
-		strList.add("eyihcn");
-		
-		Map<String,Object> ben = new HashMap<String, Object>();
-		ben.put("nameToUser", nameToUser);
-		ben.put("goupToUsers", goupToUsers);
-		ben.put("goupToUsers2", goupToUsers2);
-		ben.put("rm", strList);
-
-		String json = Json.toJson(ben);
-		System.out.println("json =====>"+json);
-		Map<String,Object> properties = Json.fromJson(json, Map.class);
-		System.out.println("properties===>"+properties);
-		ComplicatedBean bean = MyBeanUtil.mapToEntity(ComplicatedBean.class, properties, "test");
-		
-		System.out.println(bean.getNameToUser());
-		System.out.println(bean.getGoupToUsers());
-		System.out.println(bean.getGoupToUsers2());
-		System.out.println(bean.getRm());
-		
-	}
+//	@Test
+//	public void testMapToBean() {
+//		
+//		Set<User> users = new HashSet<User>();
+//		users.add(new User("eyihcn",new Date()));
+//		users.add(new User("chenyi",new Date()));
+//		users.add(new User("cnheyi",new Date()));
+//		Map<String,User> nameToUser =new HashMap<String, User>();
+//		nameToUser.put("me", new User("eyihcn",new Date()));
+//		nameToUser.put("i", new User("cnheyi",new Date()));
+//		nameToUser.put("my", new User("iyehcn",new Date()));
+//		
+//		Map<String,Set<User>> goupToUsers = new HashMap<String, Set<User>>();
+//		goupToUsers.put("G1", users);
+//		goupToUsers.put("G2", users);
+//		Map<String, List<Map<String, User>>> goupToUsers2 = new HashMap<String, List<Map<String,User>>>();
+//		List<Map<String, User>> ll = new ArrayList<Map<String,User>>();
+//		ll.add(nameToUser);
+//		
+//		goupToUsers2.put("goupToUsers2", ll);
+//		
+//		
+//		List<String> strList = new ArrayList<String>();
+//		strList.add("eyihcn");
+//		
+//		Map<String,Object> ben = new HashMap<String, Object>();
+//		ben.put("nameToUser", nameToUser);
+//		ben.put("goupToUsers", goupToUsers);
+//		ben.put("goupToUsers2", goupToUsers2);
+//		ben.put("rm", strList);
+//
+//		String json = Json.toJson(ben);
+//		System.out.println("json =====>"+json);
+//		Map<String,Object> properties = Json.fromJson(json, Map.class);
+//		System.out.println("properties===>"+properties);
+//		ComplicatedBean bean = MyBeanUtil.mapToEntity(ComplicatedBean.class, properties, "test");
+//		
+//		System.out.println(bean.getNameToUser());
+//		System.out.println(bean.getGoupToUsers());
+//		System.out.println(bean.getGoupToUsers2());
+//		System.out.println(bean.getRm());
+//		
+//	}
 	
 	
 }

@@ -2,7 +2,6 @@ package test;
 
 import static org.junit.Assert.fail;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,26 +10,20 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.AbstractJUnit4SpringContextTests;
 
-import utils.ServicePaginationHelper;
-import yichen.massbatchexport.DataProvider;
-import yichen.massbatchexport.MultiThreadExportService;
-import yichen.massbatchexport.RowDataHandler;
 import client.ProductServiceClient;
 import entity.Product;
+@ContextConfiguration(locations = { "classpath:/testDaoServiceClient.xml" })
+public class DaoServiceClientTest extends AbstractJUnit4SpringContextTests {
 
-public class DaoServiceClientTest {
-
-	ApplicationContext applicationContext;
-	String configLocation = "classpath:/testDaoServiceClient.xml";
-	ProductServiceClient productServiceClient = null;
+	@Autowired
+	ProductServiceClient productServiceClient ;
 	
 	@Before
 	public void setUp() throws Exception {
-		applicationContext = new ClassPathXmlApplicationContext(configLocation);
-		productServiceClient = applicationContext.getBean(ProductServiceClient.class);
 	}
 
 	@After
@@ -82,13 +75,14 @@ public class DaoServiceClientTest {
 	public void testCreateT() {
 		long start = System.currentTimeMillis();
 		Product product = null;
-		for (int i=0; i<10; i++) {
+		int counts = 1000;
+		for (int i=0; i<counts; i++) {
 			product =new Product();
-			product.setName("pro-1-b-"+i);
+			product.setName("pro-"+i);
 			product.setUnitPrice(i);
 			System.out.println(productServiceClient.create(product));
 		}
-		System.out.println(System.currentTimeMillis()-start);
+		System.out.println(" ==================== "+(System.currentTimeMillis()-start));
 	}
 
 	@Test
@@ -108,7 +102,7 @@ public class DaoServiceClientTest {
 
 	@Test
 	public void testUpdateMapOfStringObject() {
-		Map<String, Object> update = new HashMap();
+		Map<String, Object> update = new HashMap<String, Object>();
 		update.put("id", 80000);
 		update.put("unitPrice", 10000);
 		System.out.println(productServiceClient.update(update));
@@ -353,32 +347,32 @@ public class DaoServiceClientTest {
 		System.out.println(productServiceClient.findIds(query ));
 	}
 	
-	@Test
-	public void testThreadSafe_1 () {
-		
-		int totalPageSize = Long.valueOf(productServiceClient.counts()).intValue();
-		String [] titles = new String[2];
-		titles[0] = "name";
-		titles[1] = "unitPrice";
-		String exportFileName = "D:"+File.separator+"testProduct.xls";
-		 new MultiThreadExportService<Product, Object>(totalPageSize,titles,
-				 
-			 new DataProvider<Product>() {
-
-			public List<Product> providerOnePageDage(int pageSize, int pageNumber) {
-				return productServiceClient.findList(null, null, ServicePaginationHelper.build(pageSize, pageNumber));
-			}
-		 }
-		 ,new RowDataHandler<Product>() {
-
-			public List<String> handler(Product entity) {
-				List<String> rows = new ArrayList<String>(2);
-				rows.add(Thread.currentThread().getName()+"---"+entity.getName());
-				rows.add(entity.getUnitPrice()+"");
-				return rows;
-			}
-		}).export(exportFileName);
-		
-	}
+//	@Test
+//	public void testThreadSafe_1 () {
+//		
+//		int totalPageSize = Long.valueOf(productServiceClient.counts()).intValue();
+//		String [] titles = new String[2];
+//		titles[0] = "name";
+//		titles[1] = "unitPrice";
+//		String exportFileName = "D:"+File.separator+"testProduct.xls";
+//		 new MultiThreadExportService<Product, Object>(totalPageSize,titles,
+//				 
+//			 new DataProvider<Product>() {
+//
+//			public List<Product> providerOnePageDage(int pageSize, int pageNumber) {
+//				return productServiceClient.findList(null, null, ServicePaginationHelper.build(pageSize, pageNumber));
+//			}
+//		 }
+//		 ,new RowDataHandler<Product>() {
+//
+//			public List<String> handler(Product entity) {
+//				List<String> rows = new ArrayList<String>(2);
+//				rows.add(Thread.currentThread().getName()+"---"+entity.getName());
+//				rows.add(entity.getUnitPrice()+"");
+//				return rows;
+//			}
+//		}).export(exportFileName);
+//		
+//	}
 	
 }

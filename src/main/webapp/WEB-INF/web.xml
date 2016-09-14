@@ -26,15 +26,22 @@
 			实际上也可以不通过 contextConfigLocation 来配置 SpringMVC 的配置文件, 而使用默认的.
 			默认的配置文件为: /WEB-INF/<servlet-name>-servlet.xml
 		-->
-		<!--  
 		<init-param>
 			<param-name>contextConfigLocation</param-name>
 			<param-value>classpath:springmvc.xml</param-value>
 		</init-param>
-		-->
 		<load-on-startup>1</load-on-startup>
 	</servlet>
-
+	<context-param>  
+	    <param-name>log4jConfigLocation</param-name>  
+	    <param-value>/WEB-INF/log4j.properties</param-value>  
+	</context-param>  
+	<listener>  
+	    <listener-class>  
+	        org.springframework.web.util.Log4jConfigListener  
+	    </listener-class>  
+	</listener>
+	
 	<servlet-mapping>
 		<servlet-name>dispatcherServlet</servlet-name>
 		<url-pattern>/</url-pattern>

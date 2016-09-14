@@ -16,8 +16,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import utils.Json;
 import entity.ServerPortSetting;
+import utils.Json;
 
 /**
  * 获取路由和发送请求
@@ -32,9 +32,8 @@ public abstract class BaseServiceClient {
 	protected static Map<String, Map<String, String>> serviceRouterConfigs = new ConcurrentHashMap<String, Map<String, String>>();
 	@Autowired
 	@Qualifier("restTemplate")
+//	@Qualifier("restTemplateConnPool")
 	protected RestTemplate restTemplate ; //once constructed ,is thread safe
-//	protected String host; // 主机
-//	protected String token; // 令牌
 	protected int timeOut = -1;
 	
 	public static final String SEPARATOR = "/";
@@ -57,8 +56,8 @@ public abstract class BaseServiceClient {
 		// 1. 先从缓存取host 和 token
 		Map<String, String> serviceConfig = serviceRouterConfigs.get(serviceTokenCode);
 		if (null != serviceConfig) {
-			hostAndToken[0] = ((String) serviceConfig.get("ADDRESS"));
-			hostAndToken[1] = ((String) serviceConfig.get("TOKEN"));
+			hostAndToken[0] = (serviceConfig.get("ADDRESS"));
+			hostAndToken[1] = (serviceConfig.get("TOKEN"));
 			return hostAndToken;
 		}
 		// 2. 若缓存中没有，从系统变量中获取
@@ -110,7 +109,7 @@ public abstract class BaseServiceClient {
 		log.info(new StringBuilder("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^lion ").append(requestParam).toString());
 		try {
 			HttpEntity<Object> httpEntity = new HttpEntity(requestParam, headers);
-			response = restTemplate.postForObject(requsetURL, httpEntity,responseType , new Object[0]);
+			response = restTemplate.postForObject(requsetURL, httpEntity,responseType);
 			_activateTimeOut();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -165,9 +164,9 @@ public abstract class BaseServiceClient {
 		this.timeOut = timeOut;
 	}
 
-	public void setRestTemplate(RestTemplate restTemplate) {
-		System.out.println(restTemplate.getRequestFactory().getClass());
-		log.info("Autowired... " + restTemplate);
-		this.restTemplate = restTemplate;
-	}	
+//	public void setRestTemplate(RestTemplate restTemplate) {
+//		System.out.println(restTemplate.getRequestFactory().getClass());
+//		log.info("Autowired... " + restTemplate);
+//		this.restTemplate = restTemplate;
+//	}	
 }
